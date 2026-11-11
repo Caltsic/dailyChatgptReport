@@ -9,7 +9,7 @@ if (Test-Path -LiteralPath (Join-Path $root '.github')) {
 foreach ($folder in @('desktop', 'prompts', 'agent')) {
     $files += Get-ChildItem -LiteralPath (Join-Path $root $folder) -Recurse -File | Where-Object {
         $relative = [IO.Path]::GetRelativePath($root, $_.FullName)
-        $relative -notmatch '(^|[\\/])(bin|obj|node_modules|target|dist|gen|__pycache__)([\\/]|$)' -and $_.Extension -notin '.enc', '.pyc'
+        $relative -notmatch '(^|[\\/])(bin|obj|node_modules|target|dist|gen|__pycache__|\.cache|\.venv|venv|tokenizer-cache|feedback-conflicts)([\\/]|$)' -and $_.Extension -notin '.enc', '.pyc'
     }
 }
 $temporary = Join-Path $output ('source-' + [guid]::NewGuid().ToString('N') + '.tmp')
