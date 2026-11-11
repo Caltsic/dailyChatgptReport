@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: TypeScript and Vite
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run build
+        working-directory: desktop
+
+  rust:
+    name: Rust member and leader checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib migrated_collector
+      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --features leader --lib migrated_collector
+
+  agent:
+    name: Agent local fixture checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r agent/requirements.txt
+      - run: python agent/pipeline_smoke_test.py
+      - run: python agent/smoke_test.py
+
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject generated and credential files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tracked="$(git ls-files)"
+          if grep -E '(^|/)(artifacts|\.tools|node_modules|target|bin|obj|__pycache__)(/|$)' <<<"$tracked"; then
+            echo "generated path is tracked" >&2
+            exit 1
+          fi
+          if grep -E '(^|/)(.*\.secret|.*\.pfx|.*\.db(-.*)?|.*\.sqlite(-.*)?)(/|$)' <<<"$tracked"; then
+            echo "credential or local database file is tracked" >&2
+            exit 1
+          fi
+          possible="$(grep -RInE --exclude-dir=.git --exclude='*.lock' --exclude='*.enc' '(sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN [A-Z ]*PRIVATE KEY)' . | grep -vF 'sk-abcdefghijklmnopqrst' || true)"
+          if [ -n "$possible" ]; then
+            printf '%s\n' "$possible"
+            echo "possible credential material found" >&2
+            exit 1
+          fi
