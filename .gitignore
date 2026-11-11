@@ -1,0 +1,31 @@
+.tools/
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+.vs/
+*.user
+*.pfx
+*.db*
+*.log
+*.tmp
+*.secret
+*.py[cod]
+__pycache__/
+*.bak
+src/DailyReport.Server/Prompts/*.enc
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+
+# Local IDE and OS state
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
+
+# Local model/runtime state
+agent/.cache/
+agent/tokenizer-cache/
+feedback-conflicts/

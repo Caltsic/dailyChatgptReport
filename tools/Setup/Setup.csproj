@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><SetupRole Condition="'$(SetupRole)' == ''">Member</SetupRole><AssemblyName>CodexDailyReport.$(SetupRole).Setup</AssemblyName></PropertyGroup>
+  <ItemGroup><AssemblyMetadata Include="Role" Value="$(SetupRole)" /><EmbeddedResource Include="../../artifacts/payload/$(SetupRole).zip" LogicalName="Payload.zip" /></ItemGroup>
+</Project>

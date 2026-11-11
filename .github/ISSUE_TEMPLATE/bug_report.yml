@@ -1,0 +1,51 @@
+name: Bug report
+description: 报告可复现的软件问题
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请不要粘贴 API Key、配对邀请、数据库、会话原文或未经脱敏的日志。
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: "例如 0.3.6"
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: 端
+      options:
+        - 成员端
+        - 组长端
+        - Agent
+        - 构建或 CI
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请写最小、可重复的步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 脱敏日志
+      description: 删除地址、凭据、会话原文和个人信息后再粘贴。

@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/DailyReport.Server/DailyReport.Server.csproj" /><ProjectReference Include="../../src/DailyReport.Client/DailyReport.Client.csproj" /></ItemGroup>
+</Project>

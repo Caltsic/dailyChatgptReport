@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../DailyReport.Core/DailyReport.Core.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.56.0" />
+    <PackageReference Include="Markdig" Version="1.3.2" />
+    <EmbeddedResource Include="Prompts/personal.v2.enc" />
+    <EmbeddedResource Include="Prompts/department.v2.enc" />
+  </ItemGroup>
+  <Target Name="PackPrompts" BeforeTargets="PrepareForBuild">
+    <Exec Command="&quot;$(DotNetHostPath)&quot; run --project &quot;$(MSBuildProjectDirectory)/../../tools/PromptPacker/PromptPacker.csproj&quot; -- &quot;$(MSBuildProjectDirectory)/../../prompts&quot; &quot;$(MSBuildProjectDirectory)/Prompts&quot;" />
+  </Target>
+</Project>

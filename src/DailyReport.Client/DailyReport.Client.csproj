@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../DailyReport.Core/DailyReport.Core.csproj" /></ItemGroup>
+</Project>

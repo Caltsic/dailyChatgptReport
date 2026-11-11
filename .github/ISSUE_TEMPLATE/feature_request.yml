@@ -1,0 +1,22 @@
+name: Feature request
+description: 提议可验证的新功能
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议行为
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 数据、隐私或版本影响
+      description: 说明是否影响采集范围、上传内容、报告来源或现有数据兼容性。

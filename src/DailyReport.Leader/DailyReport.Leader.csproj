@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><AssemblyName>CodexDailyReport.Leader</AssemblyName><ImplicitUsings>disable</ImplicitUsings></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../DailyReport.Server/DailyReport.Server.csproj" /><Compile Include="../Desktop.Shared/*.cs" Link="Shared/%(Filename)%(Extension)" /></ItemGroup>
+</Project>

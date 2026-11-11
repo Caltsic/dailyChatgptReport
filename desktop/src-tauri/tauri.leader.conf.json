@@ -1,0 +1,7 @@
+{
+  "productName":"CodexDailyReport Leader",
+  "identifier":"cn.codexdailyreport.leader",
+  "mainBinaryName":"CodexDailyReport.Leader",
+  "app":{"windows":[{"label":"main","title":"Codex 工作日报 · 组长端","width":1440,"height":920,"minWidth":1000,"minHeight":650}]},
+  "bundle":{"resources":{"../../artifacts/agent-runtime/":"agent/"}}
+}

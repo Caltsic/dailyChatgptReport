@@ -1,0 +1,14 @@
+* text=auto
+*.ps1 text eol=crlf
+*.cs text eol=crlf
+*.rs text eol=lf
+*.py text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.exe binary
+*.zip binary
+*.ico binary
