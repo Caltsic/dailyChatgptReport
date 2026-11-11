@@ -1,0 +1,48 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Windows installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+        working-directory: desktop
+      - run: python -m pip install -r agent/requirements.txt
+      - run: pwsh -NoProfile -File scripts/build-agent.ps1 -SkipInstall
+      - run: pwsh -NoProfile -File scripts/build-tauri.ps1 -SkipTests
+      - name: Check release version
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF -match '^refs/tags/(.+)$') { $Matches[1].TrimStart('v') } else { Get-Content VERSION }
+          if ($tag -ne (Get-Content VERSION).Trim()) { throw "Tag $tag does not match VERSION" }
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts/tauri-installers -Filter '*.exe' | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash, $_.Name
+          } | Set-Content artifacts/tauri-installers/SHA256.txt -Encoding utf8
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/tauri-installers/*.exe
+            artifacts/tauri-installers/SHA256.txt
