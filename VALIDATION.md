@@ -1,3 +1,13 @@
+# 0.7.0 附：Windows 成员端界面与来源对话框
+
+日期：2026-11-12。用 Windows 交互桌面会话验证 0.7.0 成员端界面与“记录来源”四来源配置 UI（发布目录二进制、隔离数据目录）。
+
+- 方法：启动 `artifacts/tauri-publish/Member/CodexDailyReport.Member.exe`（0.7.0，隔离 `--data-dir`），`PrintWindow`（PW_RENDERFULLCONTENT）截窗口；用 UI Automation 找到并调用“记录来源”按钮，截取弹窗并查询可访问性树。
+- 结果：窗口标题 `Codex 工作日报 · 成员端`；UI Automation 找到 `记录来源`、`Codex`、`DeepSeek Harness`、`Trae 本地记录`、`Trae 导出` 五个名称；本机检测到 `C:\Users\Kaltsit\.codex`、`C:\Users\Kaltsit\.dsh`，Trae 两项按未安装状态显示提示；数据目录仅 `outbox`、无 `startup-error.txt`、进程保持运行。
+- 证据：`artifacts/acceptance/windows-ui-0.7.0/main-window.png`、`source-dialog.png`、`uia-check.txt`、`environment.txt`。
+- 同一构建的 Ubuntu 24.04 窗口也验证了相同四来源弹窗：`artifacts/acceptance/ubuntu-2404-gui/member-source-dialog-ubuntu2404.png`。
+- 边界：本机无 Trae 安装、未调用模型、未使用生产数据；未执行 Windows NSIS 安装/卸载（用发布目录二进制验证）。
+
 # 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
 
 日期：2026-11-12。用户提供的工作区 (Ubuntu 24.04.4) 无 sudo/WebKitGTK，无法运行窗口；本轮在本机 WSL2 中导入独立的 **Ubuntu 24.04.5** 发行版（cloud-image rootfs，非 WSL2 22.04），在 WSLg 1.0.71（Wayland 合成器 + XWayland）下验证交付的 0.7.0 `.deb` 与桌面窗口。

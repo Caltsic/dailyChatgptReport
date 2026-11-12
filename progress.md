@@ -1,3 +1,9 @@
+## 0.7.0 附：Windows/Ubuntu 界面与来源对话框验证
+
+- Windows 发布目录成员端（0.7.0，隔离数据目录）：PrintWindow 截窗口 + UI Automation 调用“记录来源”按钮，找到 Codex、DeepSeek Harness、Trae 本地记录、Trae 导出四项；截图与 `uia-check.txt` 在 `artifacts/acceptance/windows-ui-0.7.0`。本机检测到 `C:\Users\Kaltsit\.codex`、`.dsh`，Trae 显示未安装提示。
+- Ubuntu 24.04 WSLg：xdotool 点击“记录来源”后截弹窗，同样显示四项来源（`member-source-dialog-ubuntu2404.png`）。
+- 边界：无 Trae 安装/样本、未调用模型；Windows NSIS 安装/卸载未在本机执行（用发布二进制）。
+
 ## 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
 
 - 用户工作区 24.04 无 sudo/WebKitGTK，改用本机 WSL2 导入独立 Ubuntu 24.04.5 cloud-image 发行版（F:\WSL\Ubuntu2404，非 22.04 构建环境），WSLg 1.0.71（Wayland + XWayland）。

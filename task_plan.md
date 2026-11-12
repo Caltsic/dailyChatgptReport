@@ -1,3 +1,11 @@
+# 0.7.0 附：界面与来源对话框验证
+
+- [x] Windows：PrintWindow 截图 + UI Automation 调用“记录来源”，四项来源齐全（`artifacts/acceptance/windows-ui-0.7.0`）。
+- [x] Ubuntu 24.04 WSLg：xdotool 打开“记录来源”，弹窗截图为四项来源（`artifacts/acceptance/ubuntu-2404-gui/member-source-dialog-ubuntu2404.png`）。
+- [x] VALIDATION/README/CHANGELOG/progress 更新。
+- [ ] Windows NSIS 安装/卸载流程未在本机执行（仅有发布目录二进制冒烟）。
+- [ ] 真实 Trae 安装/样本、物理 Ubuntu 桌面仍待用户环境。
+
 # 0.7.0 附：Ubuntu 24.04 桌面窗口
 
 - [x] 本机 WSL2 导入独立 Ubuntu 24.04.5 发行版（cloud-image rootfs），WSLg 1.0.71。
