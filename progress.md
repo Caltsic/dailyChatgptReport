@@ -1,3 +1,12 @@
+## 0.6.2 Trae 数据结构调研与解析增强
+
+- 通过 `git` 访问 GitHub（本机 web_fetch 受限但 git 可用），调研公开 Trae 数据工具：trae-db-decrypt、trae-history、ai-data-extraction 及官方论坛帖。
+- 结论：Trae 国际版聊天在 `%APPDATA%\Trae\User\workspaceStorage\<id>\state.vscdb`（明文 SQLite，ItemTable 键 `inputHistory`/`ChatStore`/`memento/icube-ai-agent-storage`）；Trae CN 在 `%APPDATA%\Trae CN\ModularData\ai-agent\database.db`（SQLCipher 4，密钥需从进程内存扫描获取，社区脚本实现；近期版本有官方“导出历史对话”）。CN 表结构：chat_session/history_v2（`messages` 为 `raw_messages` JSON），时间为 Unix 秒。
+- 决策：成员端不读取 CN 加密库、不做内存扫描（越权/隐私风险），继续官方导出导入；国际版明文 vscdb 自动读取需真实样本确认 ItemTable 结构后再评估。
+- 解析增强：Trae JSON 导入支持 `raw_messages`/`sessions`/`history_v2` 包装、记录级时间继承、包装标题、推理块剔除；新增 2 项回归（共 17 项）。
+- 探针更新：默认复制国际版工作区 state.vscdb 与 CN database.db + WAL/SHM；全局状态（可能含令牌）默认跳过；分类区分 sqlite-plaintext/encrypted/json-text。合成目录自测通过，证据 `artifacts/acceptance/trae-probe-selftest`。
+- 版本 0.6.2，双端与 deb 重建。Trae 真实样本仍需用户提供。
+
 ## 0.6.1 真实 Ubuntu 跨端验收（用户提供工作区）
 
 - 用户提供独立 Ubuntu 24.04.4 工作区（SSH：worker@192.168.5.113:22002），本机无 sudo、无 WebKitGTK 运行时，但有 gcc/rustup 网络。

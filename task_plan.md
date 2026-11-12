@@ -1,3 +1,15 @@
+# 0.6.2 Trae 数据结构调研与解析增强
+
+用户 2026-11-12 表示 Trae 先保留疑问、后续补样本。本轮用公开资料把不依赖样本的部分做扎实。
+
+## 阶段
+- [x] 调研公开 Trae 工具（trae-db-decrypt/trae-history/ai-data-extraction）：国际版明文 vscdb 路径与键名；CN SQLCipher 库路径、表结构与密钥获取方式；官方导出能力。
+- [x] 解析增强：Trae JSON 导入支持 raw_messages/sessions/history_v2 包装、记录级时间继承、包装标题、推理块剔除（17 项回归）。
+- [x] 探针更新：默认复制国际版工作区 state.vscdb、CN database.db+WAL/SHM；全局状态默认跳过；分类更细；合成目录自测。
+- [x] 版本 0.6.2、文档与安装包重建。
+- [ ] 真实 Trae 导出样本核对；国际版明文 vscdb 自动读取评估（需样本确认 ItemTable JSON 结构）。
+- [ ] CN 加密库解密不实现（隐私/越权风险），只支持官方导出。
+
 # 0.6.1 真实 Ubuntu 跨端验收
 
 依据 2026-11-12 用户提供独立 Linux 工作区（worker@192.168.5.113:22002），补齐 0.5 未完成的实机跨端验证。

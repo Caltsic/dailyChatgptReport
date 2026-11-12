@@ -1,3 +1,16 @@
+# 0.6.2 Trae 导出解析增强与探针更新
+
+日期：2026-11-12。用户表示 Trae 真实样本稍后提供，本轮用公开资料补齐不依赖样本的部分。成员端仍不读取 Trae CN 本地加密库，也不做进程内存扫描。
+
+本轮验证路径：
+
+- 调研（只读公开资料）：Trae 国际版聊天在 `%APPDATA%\Trae\User\workspaceStorage\<id>\state.vscdb`（明文 SQLite，`ItemTable` 键如 `inputHistory`、`ChatStore`、`memento/icube-ai-agent-storage`）；Trae CN 在 `%APPDATA%\Trae CN\ModularData\ai-agent\database.db`（SQLCipher 4；密钥需从进程内存提取，社区脚本实现；近期版本提供官方“导出历史对话”）。参考 trae-db-decrypt、trae-history、ai-data-extraction。
+- 解析增强回归（成员端 17 项、无桌面核心 17 项、组长端 20 项）：新增 2 项覆盖 `raw_messages`/`sessions`/`history_v2` 包装 JSON、记录级 `created_at` 时间继承、包装 `session_title` 标题、推理块剔除；原有 Markdown/JSONL/跨日/无时间戳/坏文件用例保持通过。
+- 探针合成目录自测：国际版 workspace `state.vscdb` 及其 `-wal` 被复制；全局 `state.vscdb`/`storage.json` 按隐私默认跳过并计数；Trae CN `database.db`（合成加密头）与 `-wal`/`-shm` 被复制；明文 SQLite、加密库、JSON 文本分类正确。证据：`artifacts/acceptance/trae-probe-selftest`。
+- 既有验收回归：`verify_multi_source`、`verify_selection`、`verify_trae_import` 通过；前端 TypeScript 构建通过。
+- 交付物 0.6.2（本机重建，不进入源码仓库）：Windows 成员端安装包 1,890,944 字节（SHA-256 `C5F54A1E316E8BC1D3D6B9635C01E7E2D83E293DF25D3A9F47456A919BEB48B8`），组长端 27,910,415 字节（`7BAA1B593736EE6F4009CA56DA6EC6505297A38E3468681F7A62904584AEAC6D`），Ubuntu 成员端 deb 3,961,178 字节（`55FD18ECED3510EE5C1986FF7123CE5A9C460C2152D5B2646370CF7FA2DE5FFC`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：仍无真实 Trae 导出样本，解析规则基于公开资料和常见结构，真实导出后需复核；国际版明文 `state.vscdb` 的自动读取仍待样本确认 `ItemTable` JSON 结构后评估；Trae CN 加密库不实现解密。未调用模型。
+
 # 0.6.1 真实 Ubuntu 跨端与提示分类
 
 日期：2026-11-12。在用户提供的独立 Ubuntu 24.04.4 工作区（ws02，x64，内核 6.8，2 核/5.8GB）完成真实跨端验收；Trae 真实样本仍未提供，自动解析仍待样本。

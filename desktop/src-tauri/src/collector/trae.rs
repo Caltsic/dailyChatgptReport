@@ -100,11 +100,13 @@ pub(crate) fn collect(
             .ok()
             .and_then(|metadata| metadata.modified().ok())
             .map(DateTime::<Utc>::from);
-        let (messages, mut session_warnings) = if extension == "json" || extension == "jsonl" {
-            parse_json(&content, &extension, timezone)
-        } else {
-            parse_text(&content, timezone)
-        };
+        let (messages, mut session_warnings, parsed_title) =
+            if extension == "json" || extension == "jsonl" {
+                parse_json(&content, &extension, timezone)
+            } else {
+                let (messages, warnings) = parse_text(&content, timezone);
+                (messages, warnings, None)
+            };
         if messages.is_empty() {
             unrecognized += 1;
             session_warnings.push(format!(
@@ -158,7 +160,7 @@ pub(crate) fn collect(
             untimed += 1;
             session_warnings.push(format!("说明：{relative} 部分记录没有时间戳，按文件日期计入"));
         }
-        let title = session_title(&content, &relative);
+        let title = parsed_title.unwrap_or_else(|| session_title(&content, &relative));
         let session = json!({"id":session_id,"title":title,"project":"","warnings":session_warnings,
             "tool":TOOL,"toolLabel":LABEL_TRAE,
             "firstAt":local.first().map(|event| event["timestamp"].clone()).unwrap_or(Value::Null),
@@ -446,8 +448,13 @@ fn is_metadata_line(line: &str) -> bool {
     META.is_match(line)
 }
 
-fn parse_json(content: &str, extension: &str, timezone: Tz) -> (Vec<Message>, Vec<String>) {
+fn parse_json(
+    content: &str,
+    extension: &str,
+    timezone: Tz,
+) -> (Vec<Message>, Vec<String>, Option<String>) {
     let mut warnings = Vec::new();
+    let mut title = None;
     if extension == "jsonl" {
         let mut messages = Vec::new();
         for (index, line) in content.lines().enumerate() {
@@ -455,17 +462,33 @@ fn parse_json(content: &str, extension: &str, timezone: Tz) -> (Vec<Message>, Ve
                 continue;
             }
             match serde_json::from_str::<Value>(line) {
-                Ok(value) => collect_messages(&value, &mut messages, &mut warnings, timezone, Some(index + 1)),
+                Ok(value) => collect_messages(
+                    &value,
+                    &mut messages,
+                    &mut warnings,
+                    &mut title,
+                    timezone,
+                    None,
+                    Some(index + 1),
+                ),
                 Err(_) => warnings.push(format!("第 {} 行不是有效 JSON，已跳过", index + 1)),
             }
         }
-        return (messages, warnings);
+        return (messages, warnings, title);
     }
     match serde_json::from_str::<Value>(content) {
         Ok(value) => {
             let mut messages = Vec::new();
-            collect_messages(&value, &mut messages, &mut warnings, timezone, None);
-            (messages, warnings)
+            collect_messages(
+                &value,
+                &mut messages,
+                &mut warnings,
+                &mut title,
+                timezone,
+                None,
+                None,
+            );
+            (messages, warnings, title)
         }
         Err(_) => {
             // Some exports use a .json name but write one JSON object per line.
@@ -475,48 +498,102 @@ fn parse_json(content: &str, extension: &str, timezone: Tz) -> (Vec<Message>, Ve
                     continue;
                 }
                 if let Ok(value) = serde_json::from_str::<Value>(line) {
-                    collect_messages(&value, &mut messages, &mut warnings, timezone, Some(index + 1));
+                    collect_messages(
+                        &value,
+                        &mut messages,
+                        &mut warnings,
+                        &mut title,
+                        timezone,
+                        None,
+                        Some(index + 1),
+                    );
                 }
             }
             if messages.is_empty() {
                 warnings.push("文件不是有效 JSON 或 JSONL，未采集".to_owned());
             }
-            (messages, warnings)
+            (messages, warnings, title)
         }
     }
 }
+
+/// Timestamp keys used by Trae message rows and by wrapper records such as `history_v2`.
+const TIMESTAMP_KEYS: [&str; 10] = [
+    "timestamp", "time", "createdAt", "created_at", "date", "sendTime", "send_time", "ts",
+    "pubTime", "create_time",
+];
+const TITLE_KEYS: [&str; 5] = [
+    "session_title", "sessionTitle", "conversation_title", "conversationTitle", "title",
+];
+const MESSAGE_CONTAINER_KEYS: [&str; 22] = [
+    "messages", "raw_messages", "rawMessages", "conversation", "conversations", "chat", "chats",
+    "history", "history_v2", "historyV2", "chat_messages", "chatMessages", "records", "items",
+    "turns", "data", "log", "logs", "content", "children", "sessions", "session",
+];
 
 fn collect_messages(
     value: &Value,
     messages: &mut Vec<Message>,
     warnings: &mut Vec<String>,
+    title: &mut Option<String>,
     timezone: Tz,
+    inherited: Option<DateTime<Utc>>,
     line: Option<usize>,
 ) {
     match value {
         Value::Array(items) => {
             for item in items {
-                collect_messages(item, messages, warnings, timezone, line);
+                collect_messages(item, messages, warnings, title, timezone, inherited, line);
             }
         }
         Value::Object(object) => {
-            if let Some(message) = message_from_object(object, timezone, line) {
+            if let Some(mut message) = message_from_object(object, timezone, line) {
+                // A record without its own timestamp inherits the timestamp of the
+                // session/export wrapper it came from (e.g. Trae `history_v2.created_at`).
+                message.at = message.at.or(inherited);
                 messages.push(message);
                 return;
             }
-            for key in [
-                "messages", "conversation", "conversations", "chat", "chats", "history",
-                "records", "items", "turns", "data", "log", "logs", "content",
-            ] {
+            if title.is_none() {
+                if let Some(value) = TITLE_KEYS
+                    .iter()
+                    .find_map(|key| object.get(*key).and_then(Value::as_str))
+                {
+                    let clean = value.trim();
+                    if !clean.is_empty() {
+                        *title =
+                            Some(crate::common::redact(clean).chars().take(100).collect());
+                    }
+                }
+            }
+            let next_inherited = object_timestamp(object, timezone).or(inherited);
+            for key in MESSAGE_CONTAINER_KEYS {
                 if let Some(child) = object.get(key) {
                     if child.is_array() || child.is_object() {
-                        collect_messages(child, messages, warnings, timezone, line);
+                        collect_messages(
+                            child,
+                            messages,
+                            warnings,
+                            title,
+                            timezone,
+                            next_inherited,
+                            line,
+                        );
                     }
                 }
             }
         }
         _ => {}
     }
+}
+
+fn object_timestamp(
+    object: &serde_json::Map<String, Value>,
+    timezone: Tz,
+) -> Option<DateTime<Utc>> {
+    TIMESTAMP_KEYS
+        .iter()
+        .find_map(|key| object.get(*key).and_then(|value| value_as_timestamp(value, timezone)))
 }
 
 fn message_from_object(
@@ -537,16 +614,16 @@ fn message_from_object(
     if body.trim().is_empty() {
         return None;
     }
-    let at = ["timestamp", "time", "createdAt", "created_at", "date", "sendTime", "send_time", "ts", "pubTime"]
-        .iter()
-        .find_map(|key| object.get(*key).and_then(|value| value_as_timestamp(value, timezone)));
     Some(Message {
         role: kind.to_owned(),
         text: body,
-        at,
+        at: object_timestamp(object, timezone),
         line,
     })
 }
+
+/// Blocks that are internal reasoning rather than visible conversation content.
+const SKIP_BLOCK_TYPES: [&str; 5] = ["reasoning", "thinking", "internal", "redacted_thinking", "analysis"];
 
 fn text_from_value(value: &Value) -> Option<String> {
     match value {
@@ -560,6 +637,13 @@ fn text_from_value(value: &Value) -> Option<String> {
             (!parts.is_empty()).then(|| parts.join("\n"))
         }
         Value::Object(object) => {
+            if object
+                .get("type")
+                .and_then(Value::as_str)
+                .is_some_and(|kind| SKIP_BLOCK_TYPES.contains(&kind))
+            {
+                return None;
+            }
             for key in ["text", "content", "message", "body"] {
                 if let Some(text) = object.get(key).and_then(text_from_value) {
                     if !text.trim().is_empty() {
@@ -752,5 +836,61 @@ mod tests {
             .unwrap()
             .iter()
             .any(|warning| warning.as_str().unwrap().contains("未识别到对话内容")));
+    }
+
+    #[test]
+    fn trae_history_wrapper_imports_raw_messages_with_record_title_and_time() {
+        let fixture = Fixture::new("history-wrapper");
+        let day = fixture.day();
+        let now = chrono::Utc::now().timestamp_millis();
+        // Shape of Trae CN `history_v2.messages`: one record with a wrapper timestamp,
+        // raw_messages and per-block text plus an internal reasoning block.
+        fixture.write(
+            &format!("{day}-history.json"),
+            &format!(
+                r#"{{"session_title":"CN 导出会话","created_at":{now},"messages":{{"raw_messages":[
+                    {{"role":"user","content":[{{"type":"text","text":"WRAP_USER 整理导出"}}]}},
+                    {{"role":"assistant","content":[{{"type":"text","text":"WRAP_ASSISTANT 已完成"}},{{"type":"reasoning","text":"WRAP_REASONING_MUST_NOT_APPEAR"}}]}}
+                ]}}}}"#
+            ),
+        );
+        let result = fixture.collect();
+        let capture = &result.capture;
+        let events = capture["events"].as_array().unwrap();
+        assert_eq!(events.len(), 2, "events: {events:?}");
+        assert_eq!(events[0]["kind"], "user");
+        assert_eq!(events[1]["kind"], "assistant");
+        assert!(events
+            .iter()
+            .all(|event| event["timestamp"].as_str().unwrap().starts_with(&day)));
+        assert!(!capture.to_string().contains("WRAP_REASONING_MUST_NOT_APPEAR"));
+        assert_eq!(result.sessions[0]["title"], "CN 导出会话");
+    }
+
+    #[test]
+    fn trae_record_wrapper_inherits_timestamp_for_list_messages() {
+        let fixture = Fixture::new("record-wrapper");
+        let day = fixture.day();
+        let now = chrono::Utc::now().timestamp_millis();
+        // A list of per-session records, each with its own createdAt and flat messages.
+        fixture.write(
+            &format!("{day}-records.json"),
+            &format!(
+                r#"{{"sessions":[
+                    {{"title":"记录一","createdAt":{now},"messages":[
+                        {{"role":"user","text":"REC_USER 记录内容"}},
+                        {{"role":"assistant","text":"REC_ASSISTANT 记录回复"}}
+                    ]}}
+                ]}}"#
+            ),
+        );
+        let result = fixture.collect();
+        let capture = &result.capture;
+        let events = capture["events"].as_array().unwrap();
+        assert_eq!(events.len(), 2, "events: {events:?}");
+        assert!(events
+            .iter()
+            .all(|event| event["timestamp"].as_str().unwrap().starts_with(&day)));
+        assert_eq!(result.sessions[0]["title"], "记录一");
     }
 }

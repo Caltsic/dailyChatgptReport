@@ -1,5 +1,23 @@
 # 变更记录
 
+## [0.6.2] - 2026-11-12
+
+### 新增
+
+- Trae 手动导出解析增强（基于公开的 Trae 数据结构调研，仍不依赖真实样本）：支持 `raw_messages`/`sessions`/`history_v2` 等包装 JSON；消息没有自身时间戳时继承记录级 `created_at`/`createdAt`；用包装的 `session_title`/`title` 作为会话标题；跳过 reasoning/thinking 等推理块。适用于社区工具解密或官方导出产生的 JSON。
+- `scripts/probe-trae.ps1` 更新：默认复制国际版工作区 `state.vscdb`（聊天记录）和 Trae CN `database.db` 及 `-wal`/`-shm`；全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认跳过并计数；分类增加 JSON 文本。
+
+### 调研
+
+- Trae 国际版聊天数据在 `%APPDATA%\Trae\User\workspaceStorage\<id>\state.vscdb`（明文 SQLite，ItemTable 键含 `inputHistory`、`ChatStore`、`memento/icube-ai-agent-storage`）；Trae CN 在 `%APPDATA%\Trae CN\ModularData\ai-agent\database.db`（SQLCipher 4，密钥需从进程内存提取，社区脚本已实现；近期版本提供“导出历史对话”）。成员端因此不读取 CN 加密库，继续走导出导入；真实样本到位后再校准解析。
+- 调研参考：[trae-db-decrypt](https://github.com/Oh-My-Trae/trae-db-decrypt)、[trae-history](https://github.com/TOKIO233/trae-history)、[ai-data-extraction](https://github.com/sybil-solutions/ai-data-extraction)。
+
+### 验证
+
+- 成员端 17 项库回归通过（新增 2 项：`raw_messages` 记录/包装时间继承与标题、推理块剔除）。
+- 探针合成目录自测通过：国际版 workspace `state.vscdb` 复制、全局状态跳过、CN 加密库与 WAL/SHM 复制、明文/加密/JSON 分类正确；证据 `artifacts/acceptance/trae-probe-selftest`。
+- Windows 双端与 Ubuntu 成员端 0.6.2 安装包重建（校验值见 VALIDATION）。
+
 ## [0.6.1] - 2026-11-12
 
 ### 修复

@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.6.1（2026-11-12）**。本次在用户提供的 Ubuntu 24.04.4 独立工作区完成真实跨端验收：Linux 成员端核心经 SSH 隧道连接本机 Windows 组长端，完成配对、Codex/DSH/Trae 三来源采集、上传与状态查询，组长端按生产规则校验通过；同时修复 Trae 缺时间戳提示会误标“采集异常”的问题（`说明：` 前缀的提示不再计入异常）。桌面外壳改为可选 `desktop` feature，便于无 WebKitGTK 的 Linux 环境构建和测试采集核心。Trae 本地加密数据库仍不直接读取，自动解析待真实样本。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.6.2（2026-11-12）**。本次基于公开 Trae 工具与社区资料补齐了 Trae 导入的通用性：支持 `raw_messages`/`sessions`/`history_v2` 等包装 JSON、记录级时间继承、包装标题和推理块剔除，适合官方导出或社区工具解密后的 JSON；`scripts/probe-trae.ps1` 默认抓取国际版工作区 `state.vscdb` 和 Trae CN 加密库（含 WAL/SHM），全局登录状态默认不抓取。成员端仍不读取 Trae CN 本地加密库、不做进程内存扫描，继续走导出导入；真实样本到位后再校准。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -59,7 +59,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 - 重交要求包含原因，由成员手动再次提交。重新提交、生成正文均保留旧版本；新正文需要重新复核补充。
 - 已导出的归档不覆盖。后续更正由组长重新开启，生成新的报告版本。正文、补充或有效来源发生变化后，原部门汇总显示来源已更新。
 - 当前个人日报、部门汇总及历史汇总导出均只生成 PDF。旧版已生成的 Word 文件保留在原位置。
-- 支持手动导入 Trae 导出文件（Markdown/TXT/JSON/JSONL）：按角色段落或消息结构解析为当日记录，系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae 本地加密数据库不直接读取，导出格式的自动解析仍待真实样本；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传）。
+- 支持手动导入 Trae 导出文件（Markdown/TXT/JSON/JSONL）：按角色段落或消息结构解析为当日记录，支持带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块），系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae 本地加密数据库不直接读取，导出格式的自动解析仍待真实样本；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb`（国际版聊天记录）和 `database.db` 及 `-wal`/`-shm`（Trae CN 加密库），全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
 
 ## 数据与备份
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.6.2 完成 Trae 数据结构调研与不依赖样本的解析增强：成员端 17 项库回归通过（新增 `raw_messages` 包装/时间继承/标题、推理块剔除）；探针在合成目录上自测通过（国际版 workspace `state.vscdb` 复制、全局状态跳过、Trae CN 加密库含 WAL/SHM 复制、明文/加密/JSON 分类正确，证据 `artifacts/acceptance/trae-probe-selftest`）。调研结论：国际版聊天在明文 `state.vscdb`；Trae CN 为 SQLCipher 4 加密库、密钥仅能从进程内存获取，成员端不实现读取与内存扫描，继续使用官方导出导入。边界：仍无真实 Trae 导出样本；国际版明文 vscdb 的自动读取待样本确认 ItemTable 结构后评估。
 
 0.6.1 在用户提供的独立 Ubuntu 24.04.4 工作区完成真实跨端验收：Linux 成员端核心（`--no-default-features`，无 Tauri/WebKitGTK 依赖）在本机 Windows 组长端的真实 HTTPS 服务上通过 SSH 反向转发完成配对→Codex/DSH/Trae 三来源采集→上传→状态查询，组长端按生产规则 `leader.validate_capture` 校验通过（protocol 1、3 会话、8 事件、时区/day 合法）；Ubuntu 24.04 上 15 项采集回归通过；新增 2 项提示分类单测（组长端合计 18 项）。Trae 缺时间戳的 `说明：` 提示不再误标“采集异常”，真实采集缺口仍标记。Windows 双端与 Ubuntu deb 0.6.1 重建：Windows 发布目录双端以隔离 `--data-dir` 实际启动无错误，deb 在 WSL 内安装、无头启动、卸载保留数据复验通过。边界：该机无 sudo 且无 WebKitGTK 运行时，Linux 桌面窗口仍在 WSL2 Ubuntu 22.04 上验收；跨端测试经 SSH 隧道（工作区不能直连 Windows 局域网），TLS 端到端；Trae 真实导出样本仍待提供，未调用模型。
 
