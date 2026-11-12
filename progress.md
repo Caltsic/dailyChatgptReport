@@ -1,3 +1,9 @@
+## 0.7.1 附：WAL 实时读取回归与交付复核
+
+- 新增实时 WAL 测试：写入连接保持打开、记录仅在 `-wal` 时采集仍能读到（复制 db+wal+shm 的快照逻辑得到验证）；成员端 26 项/组长端 29 项/无桌面核心 26 项通过。
+- 静态检查：全部 `.ps1` 通过 PowerShell 解析器、全部 `.sh` 通过 `bash -n`。
+- 交付物复核：Windows 安装包 FileVersion/ProductVersion=0.7.1；deb Package/Version/Architecture/Depends 正确、`ldd` 无缺失库；源码包 97 个条目，解压后 clean-room 无桌面核心 26 项测试通过、示例构建通过。
+
 ## 0.7.1 Trae 导出多会话拆分
 
 - 单个 JSON/JSONL 文件中多条会话记录（社区工具解密导出 data dump 常见）按 session_id/标题拆分为独立会话，不再合并；支持 messages/raw_messages 嵌套、list/sessions/conversations 包装、JSONL 每条记录一个会话；标题优先 session_title/title、其次首条用户消息；来源 id 稳定且互不重复。单会话文件行为不变。

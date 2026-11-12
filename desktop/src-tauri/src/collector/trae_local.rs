@@ -647,4 +647,48 @@ mod tests {
         assert!(!serialized.contains("sk-abcdefghijklmnopqrst"));
         assert!(serialized.contains("需要轮换"));
     }
+
+    #[test]
+    fn trae_local_reads_a_live_wal_database() {
+        // Trae uses the VS Code SQLite stack; when it is running, recent rows can live
+        // only in the -wal file. The reader copies db+wal+shm before opening, so a live
+        // snapshot must still contain those records.
+        let fixture = Fixture::new("wal-live");
+        let workspace = fixture.workspace("ws-wal");
+        let database = workspace.join("state.vscdb");
+        let connection = Connection::open(&database).unwrap();
+        connection
+            .pragma_update(None, "journal_mode", "WAL")
+            .unwrap();
+        connection
+            .execute(
+                "CREATE TABLE ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)",
+                [],
+            )
+            .unwrap();
+        let payload = serde_json::json!({"list": [
+            {"sessionId": "wal-session", "title": "WAL 会话", "messages": [
+                {"role": "user", "content": "WAL_USER_VISIBLE 实时数据库", "timestamp": now_ms() - 30_000},
+                {"role": "assistant", "content": "WAL_ASSISTANT_VISIBLE 已完成", "timestamp": now_ms() - 20_000}
+            ]}
+        ]});
+        connection
+            .execute(
+                "INSERT INTO ItemTable (key, value) VALUES (?1, ?2)",
+                rusqlite::params!["memento/icube-ai-agent-storage", payload.to_string()],
+            )
+            .unwrap();
+        assert!(workspace.join("state.vscdb-wal").exists(), "WAL file missing");
+        // Keep the writer connection open: this mirrors collecting while Trae runs.
+        let result = fixture.collect();
+        assert_eq!(
+            result.capture["events"].as_array().unwrap().len(),
+            2,
+            "live WAL snapshot lost records: {}",
+            result.capture
+        );
+        assert_eq!(result.sessions[0]["title"], "WAL 会话");
+        assert_eq!(result.sessions[0]["tool"], "traeLocal");
+        connection.close().unwrap();
+    }
 }

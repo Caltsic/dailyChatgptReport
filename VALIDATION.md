@@ -9,6 +9,11 @@
 - 隔离 HTTPS：`verify_trae_import` 现包含 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件；组长端 `validate_capture` 通过，快照来源含 codex/trae/traeLocal。结果：`artifacts/acceptance/trae-import/latest-result.json`。
 - 交付物 0.7.1（本机重建，不进入源码仓库）：Windows 成员端安装包 2,417,735 字节（SHA-256 `BA824636CBF4A099F8AB6914CA801F70CC943667EE75347498ADD312B4D0FDE1`），组长端 27,919,101 字节（`34EB9FA76528E80ECEAC72DC85E887F4EEC8A83C0BF2CD834213BF8770392185`），Ubuntu 成员端 deb 3,994,088 字节（`C63BDFB44E114A60EE1D458FC2E0216F602041A9D0C4028AF1DF099BA681C53A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
 - 边界：无真实 Trae 导出样本，拆分规则基于公开资料和常见结构，真实样本到位后需复核；未调用模型。
+- 0.7.1 附：交付复核（本轮补充）
+  - 实时 WAL 读取回归：新增 1 项测试，在写入连接保持打开、记录只存在于 `-wal` 时执行采集；读取端复制 db+wal+shm 后仍能读到 2 条记录（模拟 Trae 运行时采集）。成员端 26 项、组长端 29 项、无桌面核心 26 项通过。
+  - 脚本静态检查：全部 `.ps1` 通过 PowerShell 解析器；全部 `.sh` 通过 `bash -n`。
+  - 交付物元数据：Windows 两个安装包 FileVersion/ProductVersion 均为 0.7.1，发布目录双端二进制 0.7.1；deb 的 Package/Version/Architecture/Depends 正确（WebKitGTK 4.1、GTK3、AppIndicator、libssl3、xdg-utils、Noto CJK），`ldd` 无缺失共享库。
+  - 源码包复核：97 个条目，含 `prompts/`、`agent/`、`scripts/`、示例、CI、VERSION、LICENSE；解压到独立目录后 `cargo test --no-default-features --lib` 26 项通过、无桌面核心示例构建通过（clean-room）。
 
 # 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
 

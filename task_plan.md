@@ -1,3 +1,9 @@
+# 0.7.1 附：WAL 实时读取回归
+
+- [x] 实时 WAL 数据库（写入连接保持打开）采集回归，快照复制逻辑验证通过（26/29/26 项）。
+- [x] PowerShell/bash 脚本静态检查；Windows 安装包版本信息、deb 控制信息与 ldd、源码包 clean-room 构建复核通过。
+- [ ] 真实 Trae 安装/样本、物理桌面、内网直连仍待用户环境。
+
 # 0.7.1 Trae 导出多会话拆分
 
 - [x] JSON/JSONL 多会话 data dump 按 session_id/标题拆分；嵌套包装与 JSONL 记录支持；单会话行为不变。
