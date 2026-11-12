@@ -1,6 +1,6 @@
 [package]
 name = "codex-daily-report"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 
 [lib]
@@ -40,7 +40,6 @@ native-tls = "0.2"
 tokio-native-tls = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json"] }
 rusqlite = { version = "0.31", features = ["bundled", "backup"] }
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Memory", "Win32_System_Threading", "Win32_Security", "Win32_System_Com"] }
 axum = { version = "0.8", optional = true }
 hyper = { version = "1", features = ["server", "http1"], optional = true }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "service", "http1", "http2"], optional = true }
@@ -49,10 +48,22 @@ flate2 = { version = "1", optional = true }
 aes-gcm = { version = "0.10", optional = true }
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"], optional = true }
 zip = { version = "4.6", default-features = false, features = ["deflate"], optional = true }
-webview2-com = { version = "0.39", optional = true }
 rcgen = { version = "0.13", optional = true }
-p12 = { version = "0.6", optional = true }
 zstd = "0.14"
+
+# The Windows member and both Leader ends keep using Win32/WebView2. The Linux
+# member end replaces them with the platform implementations below.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Memory", "Win32_System_Threading", "Win32_Security", "Win32_System_Com"] }
+webview2-com = { version = "0.39", optional = true }
+p12 = { version = "0.6", optional = true }
+
+# Linux member: secrets are encrypted with a machine-bound key and one running
+# instance at a time; the second launch restores the hidden window instead of the
+# Windows-style message box.
+[target.'cfg(not(windows))'.dependencies]
+aes-gcm = "0.10"
+tauri-plugin-single-instance = "2"
 
 [profile.release]
 opt-level = "s"

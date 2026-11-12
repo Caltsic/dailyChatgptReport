@@ -1,3 +1,12 @@
+## 0.5 Ubuntu 成员端
+
+- 需求确认：Linux 只做成员端，组长端继续 Windows x64。
+- 平台层拆分：`common.rs` 的 DPAPI/MoveFileEx 按平台实现（Linux 使用 AES-256-GCM，密钥由机器标识和登录用户派生，凭据文件 0600；原子 rename 替换）；`lib.rs` 使用 XDG 数据目录与 `xdg-open`，Linux 用单实例插件让再次启动恢复隐藏窗口，托盘构建失败只写提示不阻止启动；`main.rs` 的单实例互斥仅 Windows；`member_capture` 的选择记忆键仅 Windows 转小写；`member.rs` 设备名跨平台。
+- Cargo：`windows`、`webview2-com`、`p12` 移到 Windows 目标依赖；Linux 增加 `aes-gcm` 与 `tauri-plugin-single-instance`；`build.rs` 的 manifest 链接参数仅 Windows。
+- 打包：`tauri.conf.json` 增加 PNG 图标与 `linux.deb.depends`（WebKitGTK 4.1、GTK3、AppIndicator、libssl3、xdg-utils、fonts-noto-cjk）；新增 `scripts/build-linux-member.sh`；CI 增加 ubuntu-22.04 成员端任务，发布流程增加成员端 deb。
+- 文档：README/INTEGRATION/SECURITY/CONTRIBUTING 增加 Linux 安装、数据目录、凭据与构建说明；UI 字体增加 Noto CJK 回退。
+- 验证：WSL Ubuntu 22.04 上库回归、Release 构建、deb 打包与 Xvfb 无头启动通过；Windows 双端重建与既有回归不变。详见 `VALIDATION.md`。
+
 ## 0.4 多来源采集（Codex + DeepSeek Harness）
 
 - 需求经用户确认：Linux 版本只做成员端；Trae 安装在 Windows、本地数据样本待提供；DSH 部门成员普遍使用，只读本地会话文件可接受；单条记录设上限；顺序 0.4 多来源 → 0.5 Linux 成员端 → Trae。

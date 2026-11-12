@@ -27,6 +27,11 @@ pub struct AppState {
 impl AppState {
     pub fn new(root:PathBuf,resource:PathBuf)->Result<Self> {
         std::fs::create_dir_all(&root)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o700))?;
+        }
         Ok(Self{
             #[cfg(not(feature="leader"))]
             member:{let _=resource;member::MemberClient::new(root.clone())?},
@@ -81,19 +86,47 @@ async fn dispatch(app:tauri::AppHandle,state:tauri::State<'_,Arc<AppState>>,op:S
     state.call(&app,&op,args.unwrap_or_else(||json!({}))).await.map_err(|e|common::redact(&format!("{e:#}")))
 }
 fn open_path(path:&str)->Result<()> {
-    use windows::{core::HSTRING,Win32::{UI::{Shell::ShellExecuteW,WindowsAndMessaging::SW_SHOWNORMAL}}};
     let path=PathBuf::from(path).canonicalize()?;
-    let result=unsafe{ShellExecuteW(None,&HSTRING::from("open"),&HSTRING::from(path.as_os_str()),None,None,SW_SHOWNORMAL)};
-    if result.0 as isize<=32 {bail!("无法打开文件")};Ok(())
+    #[cfg(windows)]
+    {
+        use windows::{core::HSTRING,Win32::{UI::{Shell::ShellExecuteW,WindowsAndMessaging::SW_SHOWNORMAL}}};
+        let result=unsafe{ShellExecuteW(None,&HSTRING::from("open"),&HSTRING::from(path.as_os_str()),None,None,SW_SHOWNORMAL)};
+        if result.0 as isize<=32 {bail!("无法打开文件")};
+    }
+    #[cfg(not(windows))]
+    {
+        let status=std::process::Command::new("xdg-open").arg(&path).status().context("无法调用 xdg-open")?;
+        if !status.success() {bail!("无法打开文件")};
+    }
+    Ok(())
 }
 pub fn data_root()->PathBuf {
     let args:Vec<String>=std::env::args().collect();
     if let Some(i)=args.iter().position(|a|a=="--data-dir") { if let Some(path)=args.get(i+1){return PathBuf::from(path);} }
-    PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default()).join("CodexDailyReport").join(ROLE)
+    #[cfg(windows)]
+    {
+        PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default()).join("CodexDailyReport").join(ROLE)
+    }
+    #[cfg(not(windows))]
+    {
+        // Follow the XDG base directory spec so the member data stays in the usual place.
+        let base=std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(||{
+            PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".local/share")
+        });
+        base.join("CodexDailyReport").join(ROLE)
+    }
 }
 pub fn run()->Result<()> {
     let root=data_root();
-    let builder=tauri::Builder::default().plugin(tauri_plugin_dialog::init()).invoke_handler(tauri::generate_handler![dispatch]);
+    #[cfg(windows)]
+    let builder=tauri::Builder::default();
+    // Linux hides the window to the tray like Windows, but GNOME may not display tray
+    // icons; letting a second launch focus the hidden window keeps it reachable.
+    #[cfg(not(windows))]
+    let builder=tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|app,_argv,_cwd|{
+        if let Some(window)=app.get_webview_window("main"){let _=window.show();let _=window.set_focus();}
+    }));
+    let builder=builder.plugin(tauri_plugin_dialog::init()).invoke_handler(tauri::generate_handler![dispatch]);
     builder.setup(move |app| {
         let resource=app.path().resource_dir()?;
         let state=Arc::new(AppState::new(root.clone(),resource)?);
@@ -101,12 +134,20 @@ pub fn run()->Result<()> {
         let open=MenuItem::with_id(app,"open","打开工作日报",true,None::<&str>)?;
         let exit=MenuItem::with_id(app,"exit","退出",true,None::<&str>)?;
         let menu=Menu::with_items(app,&[&open,&exit])?;
-        TrayIconBuilder::new().icon(app.default_window_icon().context("缺少程序图标")?.clone()).tooltip(if ROLE=="Leader"{"Codex 工作日报 · 组长端"}else{"Codex 工作日报 · 成员端"}).menu(&menu).on_menu_event(|app,event|{
+        let tray=TrayIconBuilder::new().icon(app.default_window_icon().context("缺少程序图标")?.clone()).tooltip(if ROLE=="Leader"{"Codex 工作日报 · 组长端"}else{"Codex 工作日报 · 成员端"}).menu(&menu).on_menu_event(|app,event|{
             match event.id.as_ref(){"exit"=>{
                 #[cfg(feature="leader")] {let app=app.clone();let state=app.state::<Arc<AppState>>().inner().clone();tauri::async_runtime::spawn(async move {state.leader.shutdown().await;app.exit(0);});}
                 #[cfg(not(feature="leader"))] app.exit(0);
             },"open"=>if let Some(w)=app.get_webview_window("main"){let _=w.show();let _=w.set_focus();},_=>{}}
-        }).build(app)?;
+        }).build(app);
+        #[cfg(windows)]
+        tray?;
+        #[cfg(not(windows))]
+        if let Err(error)=tray {
+            // GNOME without the AppIndicator extension cannot show a tray icon. The member
+            // app still runs; a second launch focuses the hidden window instead.
+            let _=common::atomic_text(&root.join("tray-warning.txt"),&common::redact(&format!("托盘图标不可用：{error:#}")));
+        }
         tauri::async_runtime::spawn(async move {if let Err(error)=state.start().await {let _=common::atomic_text(&state.root.join("startup-error.txt"),&common::redact(&error.to_string()));}});
         Ok(())
     }).on_window_event(|window,event|{

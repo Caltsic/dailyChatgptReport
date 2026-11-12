@@ -4,17 +4,17 @@
 [![最新版本](https://img.shields.io/github/v/release/Caltsic/dailyChatgptReport?display_name=tag)](https://github.com/Caltsic/dailyChatgptReport/releases)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Windows x64 双端软件，每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness 记录，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
+Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness 记录，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
 
 这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。成员端只读取已启用的本机来源；系统提示、内部推理和内部记录不采集，未安装的来源自动跳过。
 
-当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
+当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.4.0（2026-11-12）**。本次成员端新增多来源采集：可同时采集本机 Codex 与 DeepSeek Harness 的当日记录，在“记录来源”中启用来源并可为每个来源指定本机目录；会话列表合并展示，支持按来源和项目筛选，子代理会话标注父会话。DeepSeek Harness 按当前 v4 会话格式读取，旧格式会话提示后跳过；系统提示、内部推理和注入型内部消息不采集。单条记录超过 200000 字符时截断并在原文和采集说明中标注。组长端提示词升级为多来源描述（`personal.v3`、`extract.v2`），报告正文仍为 Markdown。两端采用 Tauri 2 + TypeScript 界面、Rust 本地业务。升级前从托盘退出旧端，再运行新安装包；原部门、配对、队列、草稿、选择记忆和报告数据继续使用。
+当前版本：**组长端和成员端 0.5.0（2026-11-12）**。本次新增 Ubuntu 22.04+ x64 成员端：采集、筛选、上传、补充和下载与 Windows 成员端一致，组长端仍为 Windows x64。Linux 凭据使用机器绑定密钥加密并保持文件 0600 权限，数据目录遵循 XDG；窗口关闭后仍在后台同步，再次启动会恢复已隐藏的窗口（GNOME 无托盘图标时同样可用）。平台层按系统拆分，Windows 双端的既有行为、数据目录和协议不变。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
-1. 组长运行 `CodexDailyReport.Leader.Setup.exe`，成员运行 `CodexDailyReport.Member.Setup.exe`。安装位置可选，使用 NSIS 安装器。组长包包含 Python Agent；两端均不携带 .NET、Playwright 或独立 Chromium。复用系统 WebView2，缺少时安装器联网补齐。无需安装 Python 或 Microsoft Office。
+1. 组长运行 `CodexDailyReport.Leader.Setup.exe`，Windows 成员运行 `CodexDailyReport.Member.Setup.exe`，Ubuntu 成员安装 `CodexDailyReport.Member.deb`（`sudo apt install ./CodexDailyReport.Member.deb`，会自动安装 WebKitGTK 4.1、GTK3、AppIndicator、Noto CJK 字体等依赖）。安装位置可选，Windows 使用 NSIS 安装器。组长包包含 Python Agent；Windows 端不携带 .NET、Playwright 或独立 Chromium，复用系统 WebView2；Ubuntu 端复用系统 WebKitGTK。无需安装 Python 或 Microsoft Office。
 2. 组长配置部门名称、时区、接收地址，以及模型 API Base URL、API Key、模型名称，保存后测试连接。Base URL 形如 `https://provider.example/v1`，接口为 OpenAI 兼容 Chat Completions。
 3. 成员通过内网或 VPN 访问组长电脑，默认 HTTPS 端口为 18443。组长端自动识别当前有线/Wi-Fi 内网 IP；多网卡可从下拉框选择 VPN 地址，也可手动填写固定地址或主机名。旧版保存的 `localhost` 默认地址会自动纠正。创建邀请时自动模式重新检测 IP，邀请弹窗显示实际连接地址。组长电脑需允许接收端口入站；已配对电脑连接的地址发生变化后，重新生成邀请配对。
 4. 组长新增成员并创建配对邀请。成员核对部门、地址、证书指纹和上传范围后绑定。邀请 30 分钟有效、只可使用一次；重新配对同一成员会撤销旧设备。
@@ -26,7 +26,7 @@ Windows x64 双端软件，每个部门独立运行。成员采集并上传本�
 
 成员重新上传记录后，旧日报仍可阅读，补充可编辑和保存草稿；需组长基于最新记录生成新版后才能提交补充。若点击提交时恰好发生版本变化，成员端保留草稿和被拒绝提交的原文，提示刷新复核。已被拒绝的版本冲突请求移至本机 `feedback-conflicts` 目录，不会继续重试旧正文，也不会自动附到新正文。
 
-组长本人可另装成员端，绑定自己的成员身份。关闭窗口后进入托盘继续运行；托盘“退出”停止同步。成员端只显示提交、复核和补充所需内容，不包含 Agent 或模型配置。
+组长本人可另装成员端，绑定自己的成员身份。关闭窗口后进入托盘继续运行；托盘“退出”停止同步。成员端只显示提交、复核和补充所需内容，不包含 Agent 或模型配置。Ubuntu 成员端关闭窗口后同样在后台继续同步，再次启动会恢复已隐藏的窗口；GNOME 默认不显示托盘图标时托盘菜单不可用，但再次启动仍可恢复窗口。
 
 安装器可输入程序安装路径或点击“浏览”选择文件夹；后续 Tauri 版本升级沿用安装位置。首次从 WPF 版迁移时建议使用新版默认目录，旧版可随后卸载。日报数据独立保存在用户数据目录，卸载程序不会删除它。
 
@@ -62,9 +62,9 @@ Windows x64 双端软件，每个部门独立运行。成员采集并上传本�
 
 ## 数据与备份
 
-成员默认数据目录为 `%LOCALAPPDATA%\CodexDailyReport\Member`，部门目录为 `%LOCALAPPDATA%\CodexDailyReport\Leader`。可用 `--data-dir "绝对路径"` 启动独立实例。成员端的记录来源与自定义目录保存在该目录的 `sources.json`；旧版 `codex-root.txt` 自动迁移为 Codex 来源路径。
+成员默认数据目录为 `%LOCALAPPDATA%\CodexDailyReport\Member`，部门目录为 `%LOCALAPPDATA%\CodexDailyReport\Leader`；Ubuntu 成员端使用 `~/.local/share/CodexDailyReport/Member`（遵循 `$XDG_DATA_HOME`）。可用 `--data-dir "绝对路径"` 启动独立实例。成员端的记录来源与自定义目录保存在该目录的 `sources.json`；旧版 `codex-root.txt` 自动迁移为 Codex 来源路径。
 
-API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储。部门每日自动备份，保留最近 14 份；可手动备份到其他目录。备份包含工作材料，不包含可用的 API Key 和证书私钥。恢复到空目录后重新设置 API Key、核对地址并配对设备。
+Windows 端 API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储（DPAPI）。Ubuntu 成员端没有 DPAPI，凭据使用由机器标识和登录用户派生的密钥加密，文件权限保持 0600；不要把成员数据目录复制到其他机器后继续使用。部门每日自动备份，保留最近 14 份；可手动备份到其他目录。备份包含工作材料，不包含可用的 API Key 和证书私钥。恢复到空目录后重新设置 API Key、核对地址并配对设备。
 
 ## 构建
 
@@ -73,6 +73,17 @@ API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储。�
 ```powershell
 pwsh -File .\scripts\build.ps1
 ```
+
+Ubuntu 成员端构建需要 Rust 工具链、Node.js 22 及 Tauri 的 Linux 依赖；组长端不参与 Linux 构建，也不支持从 Windows 交叉编译：
+
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+  libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev \
+  build-essential pkg-config
+bash scripts/build-linux-member.sh
+```
+
+输出 `artifacts/linux-installers/CodexDailyReport.Member.deb` 与可运行目录 `artifacts/linux-publish`。CI 在 `ubuntu-22.04` 上运行成员端库回归和 Release 构建，发布流程额外生成 `.deb`。
 
 `build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
 
@@ -85,6 +96,8 @@ pwsh -File .\scripts\build.ps1
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；核对 deb 依赖（WebKitGTK 4.1、GTK3、AppIndicator、OpenSSL、xdg-utils、Noto CJK）与文件列表，数据目录权限 0700，单实例第二个进程退出且第一个继续运行。Windows 双端在平台层拆分后回归通过并重建 0.5.0 安装包。边界：未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收，未在 WSL 内实际 `dpkg -i` 安装，也未用 Linux 成员端连接 Windows 组长端做实际配对上传。
 
 0.4.0 在隔离目录通过实际 HTTPS 完成多来源采集与上传：Codex 与会话格式 v4 的 DeepSeek Harness 同日记录合并采集，成员端按来源筛选并上传，组长端校验后快照包含两类来源事件。DSH 内部记录（系统提示、请求头与会话日志投递记录）经结构核对未进入采集内容；旧格式会话、损坏尾部、注入型用户消息和单条超长记录分别由合成样例覆盖。本机真实 DSH 数据只做只读计数探针（`cargo run --example verify_sources`），未上传、未写入报告。前端 TypeScript 构建与两端 Rust 库回归通过；本轮不调用外部模型、不修改生产数据。
 
@@ -104,4 +117,4 @@ pwsh -File .\scripts\build.ps1
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志；不含普通 ChatGPT 网页、Trae IDE 本地记录、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04+ x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志；不含普通 ChatGPT 网页、Trae IDE 本地记录、多设备合并、跨部门看板或绩效评分。

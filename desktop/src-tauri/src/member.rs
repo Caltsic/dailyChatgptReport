@@ -26,6 +26,18 @@ fn identity_part(value: &Value, key: &str) -> String {
     text(&value["identity"], key).to_owned()
 }
 
+fn device_name() -> String {
+    #[cfg(windows)]
+    let name = std::env::var("COMPUTERNAME").ok();
+    #[cfg(not(windows))]
+    let name = std::env::var("HOSTNAME")
+        .ok()
+        .or_else(|| fs::read_to_string("/proc/sys/kernel/hostname").ok().map(|value| value.trim().to_owned()));
+    name.filter(|value| !value.trim().is_empty()).unwrap_or_else(|| {
+        if cfg!(windows) { "Windows".to_owned() } else { "Linux".to_owned() }
+    })
+}
+
 const FEEDBACK_CONFLICT: &str = "报告正文或工作记录已更新，刚才的补充未提交，已保留在本机。请刷新查看；若新版尚未生成，请组长生成后再复核提交。";
 
 fn feedback_blocked_reason(status: &Value) -> &str {
@@ -686,7 +698,7 @@ impl MemberClient {
                         value
                     }
                 };
-                let payload = json!({"code":code,"deviceName":std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Windows".into()),"pairingRequestId":request_id}).to_string();
+                let payload = json!({"code":code,"deviceName":device_name(),"pairingRequestId":request_id}).to_string();
                 let connection = DepartmentConnection::new(&invitation).await?;
                 let identity = connection
                     .json(Method::POST, "/v1/pair", Some(&payload))

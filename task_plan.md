@@ -1,3 +1,13 @@
+# 0.5 Ubuntu 成员端
+
+依据 2026-11-12 用户确认：Linux 只做成员端，组长端继续 Windows。
+
+## 阶段
+- [x] 平台层拆分（凭据、原子写入、数据目录、打开文件、单实例、托盘降级、设备名）。
+- [x] Cargo 目标依赖拆分与 Linux 依赖。
+- [x] deb 打包配置、Linux 构建脚本、CI 与发布流程。
+- [x] WSL Ubuntu 22.04 构建/回归/无头启动验证与 Windows 双端重建。
+
 # 0.4 多来源采集（Codex + DeepSeek Harness）
 
 依据 2026-11-12 用户确认：Linux 版本只做成员端；Trae 安装在 Windows、样本待提供；DSH 部门成员普遍使用；单条记录设上限；顺序为 0.4 多来源、0.5 Linux 成员端、Trae 接入。

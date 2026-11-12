@@ -1,12 +1,17 @@
-use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
 use sha2::{Digest, Sha256};
 use std::{env, fs, path::PathBuf};
 
 fn main() {
-    let manifest=PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("examples/windows.manifest");
-    println!("cargo:rustc-link-arg-examples=/MANIFEST:EMBED");
-    println!("cargo:rustc-link-arg-examples=/MANIFESTINPUT:{}",manifest.display());
+    if cfg!(windows) {
+        // Windows examples run without a console window; embed the manifest only there.
+        let manifest =
+            PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("examples/windows.manifest");
+        println!("cargo:rustc-link-arg-examples=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg-examples=/MANIFESTINPUT:{}", manifest.display());
+        println!("cargo:rerun-if-changed={}", manifest.display());
+    }
     if env::var_os("CARGO_FEATURE_LEADER").is_some() {
+        use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
         let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
         let key = Sha256::digest(b"CodexDailyReport:leader-resource:v1:2026");
         let cipher = Aes256Gcm::new_from_slice(&key).unwrap();

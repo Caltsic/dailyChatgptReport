@@ -1,5 +1,26 @@
 # 变更记录
 
+## [0.5.0] - 2026-11-12
+
+### 新增
+
+- Ubuntu 22.04+ x64 成员端（`.deb`）：采集、来源筛选、上传、补充与 Windows 成员端一致；组长端仍为 Windows x64。
+- Linux 凭据使用机器绑定密钥加密并保持文件 0600 权限；数据目录遵循 XDG（`~/.local/share/CodexDailyReport/Member`）。
+- Linux 单实例：再次启动恢复已隐藏的窗口，GNOME 无托盘图标时同样可用；托盘不可用只记录提示，不阻止启动。
+- CI 增加 Ubuntu 成员端任务，发布流程增加成员端 `.deb`。
+
+### 变更
+
+- 平台层拆分：Windows 保留 DPAPI、MoveFileEx、ShellExecuteW、单实例互斥与 WebView2；Linux 使用 AES-256-GCM 本机密钥、原子 rename、`xdg-open` 与单实例插件。
+- `windows`、`webview2-com`、`p12` 改为 Windows 目标依赖；Linux 构建不启用组长端功能。构建脚本与源码包加入 Linux 构建入口。
+- UI 字体增加 Noto CJK 回退，`deb` 依赖声明 WebKitGTK 4.1、GTK3、AppIndicator、OpenSSL、xdg-utils 与 Noto CJK 字体。
+
+### 验证
+
+- WSL Ubuntu 22.04 上 `cargo test --lib`（10 项库回归）、Release 构建、`.deb` 打包与 Xvfb 无头启动通过；deb 文件列表与依赖已核对。
+- Windows 双端 Release 与 NSIS 安装包重建通过，成员端/组长端回归与 0.4.0 一致。
+- 未在真实 Ubuntu 桌面、Wayland 会话或 ARM 设备上验收；未做跨端 Linux 成员 ↔ Windows 组长实机配对。
+
 ## [0.4.0] - 2026-11-12
 
 ### 新增

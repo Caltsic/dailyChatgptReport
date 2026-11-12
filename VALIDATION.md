@@ -1,3 +1,17 @@
+# 0.5.0 Ubuntu 成员端
+
+日期：2026-11-12。本次只变更成员端构建与平台层；组长端仍为 Windows x64，Windows 成员端行为与 0.4.0 相同。
+
+本轮验证路径（WSL2 Ubuntu 22.04.2 LTS，webkit2gtk-4.1 2.50.4，Rust stable，Node 22）：
+
+- 库回归与构建：安装 Tauri Linux 依赖后 `npm ci`、`npm run build`、`cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib`（9 项采集回归全部通过）与 `cargo build --release` 通过；未启用 `leader` feature（组长端功能仅 Windows）。
+- 打包：`npx tauri build --bundles deb --config src-tauri/tauri.build.conf.json` 生成 `CodexDailyReport Member_0.5.0_amd64.deb`（3,937,386 字节，SHA-256 `b06cde5fb6c0b9fece591dab133599bb4bb76d54ad5def076f20498e918d0bc2`）。控制信息：`Package: codex-daily-report-member`、`Version: 0.5.0`、`Architecture: amd64`，依赖含 `libwebkit2gtk-4.1-0`、`libgtk-3-0`、`libayatana-appindicator3-1`、`libssl3`、`xdg-utils`、`fonts-noto-cjk`；文件列表含 `/usr/bin/CodexDailyReport.Member`、desktop 入口与 32/128/256/512 图标。
+- 无头启动：Xvfb + dbus-run-session 下以 `--data-dir` 启动，进程持续运行超过 12 秒；数据目录自动创建且权限为 0700，无 `startup-error.txt`，本环境托盘构建成功、无托盘失败提示。环境内 xdg-desktop-portal 的 PipeWire 警告与 GTK 无窗口管理器提示不影响启动。
+- 单实例：同一数据目录启动第二个实例，第二个进程返回 0 后退出，第一个实例继续运行；再次启动恢复已隐藏窗口的单实例插件分支可用。
+- Windows 回归：平台层拆分后 Windows `cargo test --lib`（9 项）与 `--features leader`（10 项，含内置提示词解密）通过；Windows 双端 0.5.0 Release 与 NSIS 安装包重建通过。
+- 交付产物（本机重建，均不进入源码仓库）：Windows 成员端安装包 1,876,123 字节（SHA-256 `38A1E87E31FAF41BCBB6421D66241278A0A53408E6179561F3BA12CA07AEC3DD`），组长端 27,920,012 字节（`F71E3E5109D07E68A01DF107116A078926352B4A7852CD0ED841BA2FC7B1D0C7`），源码包 291,931 字节（`FB5CF3431358455B3D5E13B45D2A63CF90C6D805F3E7818B3FC724E213804973`），Ubuntu 成员端 deb 3,937,386 字节（`B06CDE5FB6C0B9FECE591DAB133599BB4BB76D54AD5DEF076F20498E918D0BC2`）。
+- 边界：未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未在 WSL 内执行 `dpkg -i` 实际安装（只核对 deb 元数据与文件列表）；未用 Linux 成员端连接 Windows 组长端做实际配对/上传；未覆盖 ARM 和 Ubuntu 20.04。跨端协议与 Windows 端一致但本轮未在 Linux 端实测 HTTPS 流程。
+
 # 0.4.0 多来源采集（Codex + DeepSeek Harness）
 
 日期：2026-11-12。成员端采集与组长端提示词更新。需求来自用户确认：Linux 版本只做成员端；Trae 安装在 Windows、样本待提供；DSH 部门成员普遍使用；单条记录设上限；顺序为 0.4 多来源、0.5 Linux 成员端、Trae。

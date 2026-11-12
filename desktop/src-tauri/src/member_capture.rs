@@ -24,8 +24,14 @@ struct SubmittedCapture {
 
 fn context(pairing: &Value, day: &str, root: &Path) -> String {
     let root = root.canonicalize().unwrap_or_else(|_|root.to_owned());
+    // Preserve the existing Windows case-insensitive key so day-selection memory survives
+    // the upgrade; Linux paths are case-sensitive and keep their exact form.
+    #[cfg(windows)]
+    let root_key = root.to_string_lossy().to_lowercase();
+    #[cfg(not(windows))]
+    let root_key = root.to_string_lossy().to_string();
     hash(&json!({"department":pairing["identity"]["departmentId"],"member":pairing["identity"]["memberId"],
-        "day":day,"zone":pairing["identity"]["timeZone"],"root":root.to_string_lossy().to_lowercase()}).to_string())
+        "day":day,"zone":pairing["identity"]["timeZone"],"root":root_key}).to_string())
 }
 
 impl CaptureDraft {
