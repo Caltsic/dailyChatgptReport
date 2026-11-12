@@ -1,3 +1,9 @@
+## 0.7.0 最终回归（交付前复核）
+
+- 成员端 22 项、组长端 25 项、无桌面核心 22 项库回归通过；verify_multi_source / verify_selection / verify_trae_import 三条隔离 HTTPS 验收通过。
+- 真实本机 DSH/Codex 只读探针：7 会话、2611 事件、内部记录泄漏 0（约 2.0 秒，不落盘不上传）。
+- 前端 TypeScript/Vite 构建通过；ci.yml / release.yml 用 PyYAML 解析通过（CI 5 任务、Release 2 任务）；交付物 SHA-256 与 artifacts/*/SHA256.txt 一致。
+
 ## 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
 
 - 在本机导入的 Ubuntu 24.04.5 + WSLg 环境中，用 xdotool 驱动交付的 0.7.0 成员端真实界面：绑定部门（X11 剪贴板粘贴邀请）→ 同意书 → 采集并选择会话（Codex/DSH/Trae 3 来源、3 会话/6 记录、脱敏预览）→ 确认上传；界面显示“已收到”。

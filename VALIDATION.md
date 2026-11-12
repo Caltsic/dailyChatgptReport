@@ -53,6 +53,7 @@
 - 既有验收回归：`verify_multi_source`、`verify_selection` 通过；前端 TypeScript 构建通过；探针合成目录自测（0.6.2 证据）保持有效。
 - 交付物 0.7.0（本机重建，不进入源码仓库）：Windows 成员端安装包 2,414,899 字节（SHA-256 `BA1CB6A701FE680408C6F2022F4D3B72D40E778ADC350B5BCE7DDED411FD0DA9`），组长端 27,919,814 字节（`FAFDA1DC83270E728F75BE35177DC3C999A80408CFD730BABCF40EA9218D324A`），Ubuntu 成员端 deb 3,989,814 字节（`769C9E712EDF01DE299BAF1D467BB28B875F1EA016D775256FCCF4D16FE6061A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
 - 边界：本环境没有真实 Trae 安装或真实 `state.vscdb`，解析规则来自公开工具（明文工作区、`ItemTable` 聊天键、`messages` 列表），需在装有国际版 Trae 的电脑上复验后才算真实生效；Trae CN 加密库不读取、不扫描内存；Trae 导出仍缺真实样本。未调用模型。
+- 0.7.0 最终回归（交付前复核）：成员端 22 项、组长端 25 项、无桌面核心 22 项库回归通过；`verify_multi_source`、`verify_selection`、`verify_trae_import` 三条隔离 HTTPS 验收通过；真实本机 DSH/Codex 只读探针 7 会话、2611 事件、内部记录泄漏 0（约 2.0 秒，不落盘不上传）；前端 TypeScript/Vite 构建通过；`ci.yml`/`release.yml` 用 PyYAML 解析通过（CI 5 任务、Release 2 任务）；交付物 SHA-256 与 `artifacts/*/SHA256.txt` 一致。
 
 # 0.6.2 Trae 导出解析增强与探针更新
 
@@ -65,7 +66,7 @@
 - 探针合成目录自测：国际版 workspace `state.vscdb` 及其 `-wal` 被复制；全局 `state.vscdb`/`storage.json` 按隐私默认跳过并计数；Trae CN `database.db`（合成加密头）与 `-wal`/`-shm` 被复制；明文 SQLite、加密库、JSON 文本分类正确。证据：`artifacts/acceptance/trae-probe-selftest`。
 - 既有验收回归：`verify_multi_source`、`verify_selection`、`verify_trae_import` 通过；前端 TypeScript 构建通过。
 - 交付物 0.6.2（本机重建，不进入源码仓库）：Windows 成员端安装包 1,890,944 字节（SHA-256 `C5F54A1E316E8BC1D3D6B9635C01E7E2D83E293DF25D3A9F47456A919BEB48B8`），组长端 27,910,415 字节（`7BAA1B593736EE6F4009CA56DA6EC6505297A38E3468681F7A62904584AEAC6D`），Ubuntu 成员端 deb 3,961,178 字节（`55FD18ECED3510EE5C1986FF7123CE5A9C460C2152D5B2646370CF7FA2DE5FFC`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
-- 边界：仍无真实 Trae 导出样本，解析规则基于公开资料和常见结构，真实导出后需复核；国际版明文 `state.vscdb` 的自动读取仍待样本确认 `ItemTable` JSON 结构后评估；Trae CN 加密库不实现解密。未调用模型。
+- 边界：仍无真实 Trae 导出样本，解析规则基于公开资料和常见结构，真实导出后需复核；国际版明文 `state.vscdb` 的自动读取已在 0.7.0 据此实现（见 0.7.0 章节）；Trae CN 加密库不实现解密。未调用模型。
 
 # 0.6.1 真实 Ubuntu 跨端与提示分类
 
@@ -110,7 +111,7 @@
 - 跨端协议验证（本机沙箱内 WSL 无法访问 Windows 主机端口：Windows 防火墙拦截入站，且 WSL 镜像网络模式配置失败，故拆成两端分别验证）：
   1) Linux 成员端在 WSL 内对**真实 HTTPS 监听器**（示例内置协议对端，按 v1 路由实现 `/v1/pair`、`/v1/status/{day}`、`/v1/submissions`、`/v1/supplements` 与 Bearer 校验）完成配对、Codex+DSH 双来源采集、上传与状态查询；正确指纹成功、错误指纹在 TLS 阶段被拒绝；上传的 capture 经服务端协议版本、时区、哈希、事件类型与会话计数校验；DSH 内部记录未进入上传内容。证据：`examples/verify_member_transport`（Linux-only）与 `artifacts/acceptance/linux-transport/result.json`。
   2) 把 Linux 端采集并上传的 capture JSON 交给**真实 Windows 组长端**的 `leader.validate_capture` 校验，结果通过（2 会话、6 事件、协议 1、时区与事件时间范围一致，来源摘要含 codex/dsh）。证据：`examples/verify_capture_file` 与 `artifacts/acceptance/cross-platform/leader-validation.json`。
-- 边界：跨端**网络级实机配对**仍未验证（此环境 WSL↔Windows 网络被拦截，见上）；未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未覆盖 ARM 和 Ubuntu 20.04；Linux 端出现 xdg-desktop-portal 的 PipeWire 警告，属无头环境提示。
+- 边界：当时跨端**网络级实机配对**未验证（此环境 WSL↔Windows 网络被拦截；0.6.1 已补真实跨端上传、0.7.0 已补 Ubuntu 24.04 GUI 全流程，见上）；未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未覆盖 ARM 和 Ubuntu 20.04；Linux 端出现 xdg-desktop-portal 的 PipeWire 警告，属无头环境提示。
 
 # 0.4.0 多来源采集（Codex + DeepSeek Harness）
 
