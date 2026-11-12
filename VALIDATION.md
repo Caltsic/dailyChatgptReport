@@ -1,3 +1,13 @@
+# 0.7.0 附：Windows 成员端界面全流程（界面驱动）
+
+日期：2026-11-12。用 UI Automation 在真实 Windows 桌面会话里驱动 0.7.0 成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”的完整流程，并用真实组长端（本机 HTTPS + 生产上传校验）接收。
+
+- 环境：Windows 10.0.26200.9711；成员端用发布目录 0.7.0 二进制（与交付安装包同源，隔离 `--data-dir`）；组长端用 `verify_cross_platform_leader`（当前源码重建，`127.0.0.1:18500`，真实证书与 `leader.validate_capture`）；三个来源使用隔离夹具（Codex 2 条、DSH v4 原始 JSONL 2 条、Trae 导出 Markdown 2 条），成员 `sources.json` 预配置为夹具目录。
+- 流程与结果：UI Automation 粘贴邀请 → 同意并绑定（界面显示 `跨端 Linux 验证部门 / 跨端 Linux 验证成员`）→ 点击“采集并选择会话”打开真实选择器（3 个会话/6 条记录，来源标签 Codex/DeepSeek Harness/Trae 导出，Trae 预览显示“说明：...按文件日期计入”提示）→ 点击“确认上传 3 个会话”→ 成员状态显示 **🟢 已收到**、等待组长下发报告；组长端结果 `ok=true, protocol=1, sessionCount=3, eventCount=6`，`eventsByTool` codex=2/dsh=2/trae=2，来源摘要含三类，`validatedBy=leader.validate_capture`。
+- 证据：`artifacts/acceptance/gui-flow/20261112-194009/`（`01-main-before-pair.png` … `06-after-upload.png`、`names-*.txt`、`session-titles.txt`、`summary.json`、`leader-result.json`、`environment.txt`）。
+- 说明：本轮还修复了验收夹具使用旧版组长示例二进制的问题（旧二进制未包含 0.6.1 的 `说明：` 提示分类，导致状态一度显示“采集异常”；用当前源码重建后状态为 🟢 已收到）。
+- 边界：全部为合成数据，无真实 Trae 数据、未调用模型、未使用生产数据；Windows NSIS 安装包本身未在本机安装（用同源发布二进制）。
+
 # 0.7.0 附：Windows 成员端界面与来源对话框
 
 日期：2026-11-12。用 Windows 交互桌面会话验证 0.7.0 成员端界面与“记录来源”四来源配置 UI（发布目录二进制、隔离数据目录）。

@@ -1,3 +1,9 @@
+## 0.7.0 附：Windows 成员端界面全流程（UIA 驱动）
+
+- 用 UI Automation 在真实 Windows 桌面驱动 0.7.0 成员端：绑定部门（ValuePattern 粘贴邀请）→ 同意并绑定 → 采集并选择会话（真实选择器展示 Codex/DSH/Trae 三来源、3 会话/6 记录、Trae 脱敏提示）→ 确认上传 3 个会话；组长端（`verify_cross_platform_leader`，当前源码重建）校验通过（protocol 1、3 会话/6 事件），成员状态 🟢 已收到。
+- 发现并修复：此前验收用的组长示例二进制是旧版本，缺 0.6.1 的 `说明：` 分类，导致状态显示“采集异常”；重建后一致。
+- 证据 `artifacts/acceptance/gui-flow/20261112-194009`（01–06 截图、UIA 名称、summary/leader 结果、environment.txt）。全部合成数据，无模型调用。
+
 ## 0.7.0 附：Windows/Ubuntu 界面与来源对话框验证
 
 - Windows 发布目录成员端（0.7.0，隔离数据目录）：PrintWindow 截窗口 + UI Automation 调用“记录来源”按钮，找到 Codex、DeepSeek Harness、Trae 本地记录、Trae 导出四项；截图与 `uia-check.txt` 在 `artifacts/acceptance/windows-ui-0.7.0`。本机检测到 `C:\Users\Kaltsit\.codex`、`.dsh`，Trae 显示未安装提示。

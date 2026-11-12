@@ -1,3 +1,9 @@
+# 0.7.0 附：Windows 成员端界面全流程
+
+- [x] UIA 驱动完整界面流程：绑定部门→采集并选择会话→预览→上传；组长端校验通过（3 会话/6 事件，protocol 1），成员状态 🟢 已收到。
+- [x] 修复验收用旧版组长示例二进制导致的“采集异常”误判；证据 `artifacts/acceptance/gui-flow/20261112-194009`。
+- [ ] 真实 Trae 数据、NSIS 安装/卸载、物理 Ubuntu 桌面仍待用户环境。
+
 # 0.7.0 附：界面与来源对话框验证
 
 - [x] Windows：PrintWindow 截图 + UI Automation 调用“记录来源”，四项来源齐全（`artifacts/acceptance/windows-ui-0.7.0`）。

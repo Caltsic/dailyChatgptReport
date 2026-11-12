@@ -16,7 +16,7 @@
 - 成员端 22 项库回归通过（新增 5 项 Trae 本地记录：明文读取、跨日过滤、加密库提示、坏载荷、凭据脱敏），组长端 25 项、无桌面核心 22 项通过。
 - 隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源：3 会话、6 事件，预览仅含可见内容，组长端按生产规则校验通过，快照来源含 codex/trae/traeLocal 三类。
 - 探针合成目录自测、既有 `verify_multi_source`/`verify_selection` 回归、前端 TypeScript 构建通过。
-- 附：在本机 WSL2 导入的独立 Ubuntu 24.04.5 + WSLg 1.0.71 环境中，用 `apt install` 安装交付的 0.7.0 deb（自动补齐 WebKitGTK 4.1 等依赖），XWayland 下成功渲染 `Codex 工作日报 · 成员端` 窗口并截图，数据目录 0700、无启动错误，DBus 会话内单实例生效；Wayland 后端可启动。Windows 成员端用 UI Automation 验证 0.7.0 界面与“记录来源”四项来源，Linux 弹窗截图同样确认。WSLg 非物理桌面，托盘面板/HiDPI/多显示器/硬件 GPU 未验证。
+- 附：在本机 WSL2 导入的独立 Ubuntu 24.04.5 + WSLg 1.0.71 环境中，用 `apt install` 安装交付的 0.7.0 deb（自动补齐 WebKitGTK 4.1 等依赖），XWayland 下成功渲染 `Codex 工作日报 · 成员端` 窗口并截图，数据目录 0700、无启动错误，DBus 会话内单实例生效；Wayland 后端可启动。Windows 成员端用 UI Automation 验证 0.7.0 界面与“记录来源”四项来源，并走通“绑定部门→采集并选择会话→预览→上传”完整界面流程（3 会话/6 事件，组长端校验通过，状态🟢已收到），Linux 弹窗截图同样确认四项来源。WSLg 非物理桌面，托盘面板/HiDPI/多显示器/硬件 GPU 未验证。
 - Windows 双端与 Ubuntu 成员端 0.7.0 安装包重建（校验值见 VALIDATION）。
 
 ### 边界
