@@ -439,7 +439,7 @@ mod tests {
             format!("{archived}\n{{\"timestamp\":"),
         )?;
         let result = collect_for_selection(
-            &SourceRoots { codex: Some(root.clone()), dsh: None },
+            &SourceRoots { codex: Some(root.clone()), dsh: None, trae: None },
             "2025-11-08",
             "Asia/Shanghai",
         );
@@ -487,7 +487,7 @@ mod tests {
             json!({"timestamp":crate::common::now(),"type":"response_item","payload":{"type":"function_call_output","output":body}}),
         ].iter().map(Value::to_string).collect::<Vec<_>>().join("\n");
         std::fs::write(root.join("sessions/truncate.jsonl"), lines)?;
-        let result = collect_for_selection(&SourceRoots { codex: Some(root.clone()), dsh: None }, &day, "Asia/Shanghai");
+        let result = collect_for_selection(&SourceRoots { codex: Some(root.clone()), dsh: None, trae: None }, &day, "Asia/Shanghai");
         std::fs::remove_dir_all(&root)?;
         let capture = result?.capture;
         let text = capture["events"][0]["text"].as_str().unwrap();

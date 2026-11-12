@@ -662,6 +662,7 @@ mod tests {
                 &SourceRoots {
                     codex: None,
                     dsh: Some(self.root.clone()),
+                    trae: None,
                 },
                 &self.day(),
                 "Asia/Shanghai",

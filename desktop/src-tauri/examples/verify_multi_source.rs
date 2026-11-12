@@ -104,6 +104,7 @@ async fn main() -> Result<()> {
         {"tool":"dsh","enabled":true,"path":dsh_root.to_string_lossy()}
     ]})).await?;
     ensure!(configured["sources"].as_array().unwrap().iter()
+        .filter(|source| source["tool"] == "codex" || source["tool"] == "dsh")
         .all(|source| source["enabled"] == true && source["detected"] == true), "Source configuration not saved");
 
     let draft = member.dispatch("member.collect", json!({"day":day})).await?;
@@ -154,7 +155,11 @@ async fn main() -> Result<()> {
         "DSH_INJECTED_CONTEXT_MUST_NOT_APPEAR", "request/header"] {
         ensure!(!serialized.contains(internal), "Snapshot contains internal record: {internal}");
     }
-    ensure!(member.dispatch("member.init", json!({})).await?["sources"].as_array().unwrap().len() == 2,
+    let restored = member.dispatch("member.init", json!({})).await?;
+    ensure!(restored["sources"].as_array().unwrap().iter()
+        .any(|source| source["tool"] == "codex" && source["enabled"] == true)
+        && restored["sources"].as_array().unwrap().iter()
+            .any(|source| source["tool"] == "dsh" && source["enabled"] == true),
         "Restart lost source configuration");
 
     leader.shutdown().await;

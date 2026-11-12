@@ -7,10 +7,12 @@ use std::path::PathBuf;
 
 pub mod codex;
 pub mod dsh;
+pub mod trae;
 
 /// Labels shown in the member UI and used as collection warning prefixes.
 pub(crate) const LABEL_CODEX: &str = "Codex";
 pub(crate) const LABEL_DSH: &str = "DeepSeek Harness";
+pub(crate) const LABEL_TRAE: &str = "Trae 导出";
 
 /// A single visible record above this many characters is cut before upload. The cut
 /// stays visible in the text and the member scope note mentions the limit, so reports
@@ -25,6 +27,8 @@ pub const TRUNCATION_NOTE: &str = "超过 200000 字符的单条记录已截断�
 pub struct SourceRoots {
     pub codex: Option<PathBuf>,
     pub dsh: Option<PathBuf>,
+    /// Folder containing conversations exported manually from the Trae IDE.
+    pub trae: Option<PathBuf>,
 }
 
 pub struct SelectionCapture {
@@ -122,6 +126,13 @@ pub fn collect_for_selection(roots: &SourceRoots, day: &str, zone: &str) -> anyh
             "dsh",
             LABEL_DSH,
             dsh::collect(root, target_day, timezone, cutoff)?,
+        ));
+    }
+    if let Some(root) = &roots.trae {
+        captured.push((
+            "trae",
+            LABEL_TRAE,
+            trae::collect(root, target_day, timezone, cutoff)?,
         ));
     }
     let mut sessions = Vec::new();

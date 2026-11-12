@@ -4,13 +4,13 @@
 [![最新版本](https://img.shields.io/github/v/release/Caltsic/dailyChatgptReport?display_name=tag)](https://github.com/Caltsic/dailyChatgptReport/releases)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness 记录，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
+Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness 记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
 
 这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。成员端只读取已启用的本机来源；系统提示、内部推理和内部记录不采集，未安装的来源自动跳过。
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.5.0（2026-11-12）**。本次新增 Ubuntu 22.04+ x64 成员端：采集、筛选、上传、补充和下载与 Windows 成员端一致，组长端仍为 Windows x64。Linux 凭据使用机器绑定密钥加密并保持文件 0600 权限，数据目录遵循 XDG；窗口关闭后仍在后台同步，再次启动会恢复已隐藏的窗口（GNOME 无托盘图标时同样可用）。平台层按系统拆分，Windows 双端的既有行为、数据目录和协议不变。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.6.0（2026-11-12）**。本次成员端新增“Trae 导出”来源：在 Trae 中手动导出对话文件（Markdown/TXT/JSON/JSONL）后，选择导出文件所在目录即可与 Codex、DeepSeek Harness 一起采集；按角色段落或消息结构解析，系统段落和导出元数据不采集，缺少逐条时间戳时按文件日期计入并在采集说明中提示，上传前可在预览中核对。Trae 本地加密数据库不直接读取，自动解析仍待真实样本。组长端协议与 Agent 未改，沿用 0.5.0 的双端与 Linux 平台层行为。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -18,7 +18,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 2. 组长配置部门名称、时区、接收地址，以及模型 API Base URL、API Key、模型名称，保存后测试连接。Base URL 形如 `https://provider.example/v1`，接口为 OpenAI 兼容 Chat Completions。
 3. 成员通过内网或 VPN 访问组长电脑，默认 HTTPS 端口为 18443。组长端自动识别当前有线/Wi-Fi 内网 IP；多网卡可从下拉框选择 VPN 地址，也可手动填写固定地址或主机名。旧版保存的 `localhost` 默认地址会自动纠正。创建邀请时自动模式重新检测 IP，邀请弹窗显示实际连接地址。组长电脑需允许接收端口入站；已配对电脑连接的地址发生变化后，重新生成邀请配对。
 4. 组长新增成员并创建配对邀请。成员核对部门、地址、证书指纹和上传范围后绑定。邀请 30 分钟有效、只可使用一次；重新配对同一成员会撤销旧设备。
-5. 成员选择日期，点击“采集并选择会话”，查看会话标题、来源、项目、当日时间范围、事件数及告警。可搜索、按来源和项目筛选、批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
+5. 成员选择日期，点击“采集并选择会话”，查看会话标题、来源、项目、当日时间范围、事件数及告警。可搜索、按来源和项目筛选、批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。使用 Trae 时，先在 Trae 中导出对话文件，再到“记录来源”启用“Trae 导出”并选择导出目录，导出的会话会作为独立来源参与筛选和预览。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
 6. 组长选择成员生成日报，独立成员同时处理，生成成功后自动下发，成员上线同步即可查看。看板每行有“预览报告”，也可选中一人点击“预览选中报告”；生成任务完成后可直接预览本次生成版本。内置只读预览显示正文、表格、个人补充和来源，支持切换历史版本，预览无需等待补充或定稿。组长可查看 Agent 当前活动、已运行时间、已接收文字量和错误。排队或生成中可在成员行、部门汇总栏或任务详情点击“取消生成”；取消后显示“已取消”，已有报告保留，可重新生成。
 7. 成员阅读只读正文，填写并提交补充。没有补充时点击“确认无补充”，实际保存文字为 `无补充说明`；补充不可留空。
 8. 组长点击“导出 PDF”，得到规定 A4 版式的 PDF，并归档该版本。个人补充按原文附尾，标明作者、提交时间和正文版本。成员可下载自己的 PDF。
@@ -59,7 +59,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 - 重交要求包含原因，由成员手动再次提交。重新提交、生成正文均保留旧版本；新正文需要重新复核补充。
 - 已导出的归档不覆盖。后续更正由组长重新开启，生成新的报告版本。正文、补充或有效来源发生变化后，原部门汇总显示来源已更新。
 - 当前个人日报、部门汇总及历史汇总导出均只生成 PDF。旧版已生成的 Word 文件保留在原位置。
-- Trae IDE 本地记录尚未接入：它的对话保存在加密的 SQLite 库中，不能像 Codex/DSH 一样直接读取。需要接入时，在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 收集格式样本（脚本只在本地复制数据，不上传）。
+- 支持手动导入 Trae 导出文件（Markdown/TXT/JSON/JSONL）：按角色段落或消息结构解析为当日记录，系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae 本地加密数据库不直接读取，导出格式的自动解析仍待真实样本；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传）。
 
 ## 数据与备份
 
@@ -86,7 +86,7 @@ bash scripts/build-linux-member.sh
 
 输出 `artifacts/linux-installers/CodexDailyReport.Member.deb` 与可运行目录 `artifacts/linux-publish`。CI 在 `ubuntu-22.04` 上运行成员端库回归和 Release 构建，发布流程额外生成 `.deb`。
 
-`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
+`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、Trae 导出解析、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
 
 输出目录：
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.6.0 新增 Trae 导出导入：成员端 15 项、组长端 16 项库回归通过，覆盖 Markdown/JSON/JSONL 导出解析、无时间戳按文件日期、跨日跳过、坏文件告警、系统段落与导出元数据剔除、凭据脱敏；隔离目录通过实际 HTTPS 把 Trae 导出与 Codex 记录合并采集并上传，组长端校验通过，快照含两类来源且无系统段落/导出元数据；既有 Codex+DSH 上传与选择流程回归通过，前端 TypeScript 构建通过。Windows 双端 0.6.0 安装包与 Ubuntu 成员端 deb 重建：Windows 发布目录双端可执行文件以隔离 `--data-dir` 实际启动、无启动错误；deb 在 WSL 内 `apt install` 安装成功，已安装二进制无头启动、`apt remove` 后成员数据保留。本轮只用合成导出样例，未获得真实 Trae 导出样本，未读取 Trae 本地加密数据库，未调用模型。
 
 0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；把交付的 `.deb` 用 `apt install` 与 `--reinstall` 实际安装成功（依赖自动补齐、desktop 入口与 `Categories=Office` 就位），已安装的二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。Windows 发布目录双端 0.5.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误。跨端协议分两端验证：Linux 成员端在 WSL 内用真实 HTTPS 监听器完成配对、双来源采集、上传与状态查询（正确指纹通过、错误指纹被拒绝、内部记录未上传），Linux 采集的 capture 再由真实 Windows 组长端 `leader.validate_capture` 校验通过。Trae 探测脚本在合成目录树上自测通过（明文 SQLite / 加密库分类与复制），真实 Trae 样本仍待提供。边界：本环境 WSL↔Windows 网络被防火墙拦截，未做跨端实机配对；未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收。
 
@@ -118,4 +120,4 @@ bash scripts/build-linux-member.sh
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64 双端、Ubuntu 22.04+ x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志；不含普通 ChatGPT 网页、Trae IDE 本地记录、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04+ x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae 本地加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。

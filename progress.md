@@ -1,3 +1,11 @@
+## 0.6 Trae 导出导入
+
+- 需求：Trae 安装在 Windows，本地对话在加密 SQLite 库中，样本尚未提供。先把"官方导出导入"打通：成员在 Trae 中导出对话文件，选择其所在目录后与 Codex/DSH 一起采集；自动读取加密库待样本后评估。
+- 采集层新增 `collector/trae.rs`：扫描导出目录（md/txt/json/jsonl，单文件上限 20MB），Markdown 按角色段落（用户/助手/系统/工具调用/工具结果，标题严格匹配避免把会话标题当角色）解析，JSON/JSONL 按消息数组/对象（role+content+时间戳）解析；系统段落与导出元数据剔除；缺时间戳按文件日期计入并告警；会话 ID 用相对路径哈希，会话标题取首个非角色标题或文件名。
+- 成员端来源配置扩展为 codex/dsh/trae 三项；Trae 来源默认关闭且必须选择导出目录才能启用；会话列表/预览/来源筛选自动适配。
+- 新增 6 项 Trae 解析回归与隔离 HTTPS 验收 `verify_trae_import`（Trae+Codex 合并采集上传、组长端快照校验、系统段落/元数据不出现）；既有 multi-source 与 selection 验收回归通过。
+- 版本 0.6.0：双端与 Ubuntu deb 重建；提示词未改（personal.v3/extract.v2 已覆盖只有对话、无工具结果的来源）。真实 Trae 样本仍未验证。
+
 ## 0.5 Ubuntu 成员端
 
 - 需求确认：Linux 只做成员端，组长端继续 Windows x64。

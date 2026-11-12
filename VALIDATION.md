@@ -1,3 +1,15 @@
+# 0.6.0 Trae 导出导入
+
+日期：2026-11-12。成员端新增 Trae 手动导出导入来源；组长端协议、Agent 与提示词未改。Trae 本地加密数据库不直接读取，自动解析待真实样本。
+
+本轮验证路径：
+
+- 解析回归：成员端 15 项、组长端 16 项库回归通过（`cargo test --lib`、`--features leader`）。新增 6 项覆盖 Markdown 角色段落、JSON 消息数组、JSONL 逐行、无时间戳按文件日期、跨日导出跳过、无法识别文件告警；样例中核对系统段落/导出元数据剔除与凭据脱敏。
+- 隔离目录实际 HTTPS 验收（`cargo run --features leader --example verify_trae_import`）：成员端启用 Codex + Trae 导出两个来源，采集得到 2 个会话；Trae 会话标题、事件数与预览正确，系统段落和导出时间元数据未进入预览；选择后上传，组长端协议校验通过，快照 4 条事件、来源摘要含 codex/trae，且不含 Trae 系统段落与导出元数据。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 既有回归：`verify_multi_source`（Codex+DSH 上传）、`verify_selection`（选择/离线/空记录）通过；前端 TypeScript/Vite 构建通过。
+- 交付产物（本机重建，不进入源码仓库）：Windows 成员端安装包 1,892,759 字节（SHA-256 `91DD092D…F468309987`），组长端 27,912,247 字节（`C81CFB38…C23683B`），Ubuntu 成员端 deb 3,959,930 字节（`1CFCB60D…B9E10129`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.6.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误（`artifacts/acceptance/runtime-0.6/result.json`）；deb 在 WSL Ubuntu 22.04 内用 `apt install` 实际安装（依赖自动补齐，desktop 入口 `Categories=Office`），已安装二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。
+- 边界：未获得真实 Trae 导出样本，解析规则基于常见 Markdown/JSON 对话结构；导入内容可在预览核对，仍可能对特殊格式产生误判。未实现读取 Trae 本地加密数据库；本轮未调用模型、未修改生产数据。
+
 # 0.5.0 Ubuntu 成员端
 
 日期：2026-11-12。本次只变更成员端构建与平台层；组长端仍为 Windows x64，Windows 成员端行为与 0.4.0 相同。

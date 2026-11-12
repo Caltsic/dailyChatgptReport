@@ -180,9 +180,10 @@ struct OutboxItem {
 }
 
 /// Tools whose local records can be collected, in the order shown to members.
-const SOURCE_TOOLS: [(&str, &str); 2] = [
+const SOURCE_TOOLS: [(&str, &str); 3] = [
     ("codex", collector::LABEL_CODEX),
     ("dsh", collector::LABEL_DSH),
+    ("trae", collector::LABEL_TRAE),
 ];
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -283,6 +284,13 @@ impl MemberClient {
                     path,
                 }
             }
+            "trae" => SourceConfig {
+                // Trae keeps conversations in an encrypted database; the member picks a
+                // folder containing conversations exported from Trae instead.
+                tool: tool.to_owned(),
+                enabled: false,
+                path: String::new(),
+            },
             _ => {
                 let effective = collector::default_dsh_root();
                 SourceConfig {
@@ -298,6 +306,7 @@ impl MemberClient {
         if config.path.trim().is_empty() {
             match config.tool.as_str() {
                 "codex" => collector::default_root(),
+                "trae" => PathBuf::new(),
                 _ => collector::default_dsh_root(),
             }
         } else {
@@ -349,6 +358,7 @@ impl MemberClient {
             match config.tool.as_str() {
                 "codex" => roots.codex = Some(path),
                 "dsh" => roots.dsh = Some(path),
+                "trae" => roots.trae = Some(path),
                 _ => {}
             }
         }
@@ -361,7 +371,8 @@ impl MemberClient {
             let effective = Self::effective_source_path(&config);
             rows.push(json!({"tool":config.tool,"label":source_label(&config.tool),
                 "enabled":config.enabled,"path":config.path,
-                "effectivePath":effective.to_string_lossy(),"detected":effective.is_dir()}));
+                "effectivePath":effective.to_string_lossy(),
+                "detected":!effective.as_os_str().is_empty() && effective.is_dir()}));
         }
         Ok(rows)
     }
@@ -386,6 +397,9 @@ impl MemberClient {
                 candidate.canonicalize()?.to_string_lossy().into_owned()
             };
             if enabled {
+                if tool == "trae" && path.is_empty() {
+                    bail!("请先选择 Trae 导出文件所在的目录");
+                }
                 let effective = Self::effective_source_path(&SourceConfig {
                     tool: tool.to_owned(),
                     enabled,
