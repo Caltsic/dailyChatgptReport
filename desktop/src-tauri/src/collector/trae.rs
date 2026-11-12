@@ -292,7 +292,7 @@ fn session_title(content: &str, relative: &str) -> String {
     let stem = stem.rsplit_once('.').map(|(value, _)| value).unwrap_or(stem);
     let stem = stem
         .trim_start_matches(|character: char| character.is_ascii_digit() || matches!(character, '-' | '_' | '.'))
-        .trim_start_matches(|character: char| character == '年' || character == '月' || character == '日')
+        .trim_start_matches(['年', '月', '日'])
         .trim_matches(|character: char| character.is_whitespace());
     let title = if stem.is_empty() { "Trae 导出会话".to_owned() } else { crate::common::redact(stem) };
     title.chars().take(100).collect()
@@ -370,7 +370,7 @@ fn role_marker(line: &str) -> Option<(String, String)> {
         let end = trimmed[2..].find("**")? + 2;
         let heading = trimmed[2..end].trim();
         let after = trimmed[end + 2..]
-            .trim_start_matches(|character: char| matches!(character, '：' | ':' | ' '));
+            .trim_start_matches(['：', ':', ' ']);
         (heading, Some(after.to_owned()))
     } else {
         let (heading, after) = trimmed.split_once(['：', ':'])?;

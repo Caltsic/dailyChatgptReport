@@ -1,5 +1,22 @@
 # 变更记录
 
+## [0.7.2] - 2026-11-12
+
+### 改进
+
+- Ubuntu deb 包元数据完善：控制信息中补上应用简介与完整描述（此前 `Description` 为空，桌面入口也没有 `Comment`）；依赖列表去除重复项——WebKitGTK 4.1、GTK3、AppIndicator 由打包器自动加入，成员端仅显式声明 `libssl3`、`xdg-utils`、`fonts-noto-cjk`。
+- 清理 clippy 告警：成员端、组长端、无桌面核心三种配置下 `cargo clippy` 均为 0 警告（3 处风格修正 + 1 处压缩代码的 lint 豁免）。
+
+### 验证
+
+- 成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过；三种配置 clippy 0 警告。
+- 重建后的 deb 控制信息含 Description/Depends（无重复），`apt install`、无头启动、`apt remove` 保留数据复验通过；桌面入口带 `Comment`。
+- Windows 双端与 Ubuntu 成员端 0.7.2 安装包重建，发布目录双端实际启动正常。
+
+### 边界
+
+- 功能与 0.7.1 相同，本轮仅打包元数据与代码检查清理；真实 Trae 样本、物理 Ubuntu 桌面、内网直连仍待用户环境。
+
 ## [0.7.1] - 2026-11-12
 
 ### 新增

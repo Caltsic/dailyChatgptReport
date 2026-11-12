@@ -33,12 +33,10 @@ const CHAT_KEY_PREFIXES: [&str; 4] = [
 pub(crate) fn default_root() -> PathBuf {
     #[cfg(windows)]
     {
-        PathBuf::from(
-            std::env::var_os("APPDATA")
-                .map(PathBuf::from)
-                .unwrap_or_default(),
-        )
-        .join("Trae")
+        std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_default()
+            .join("Trae")
         .join("User")
         .join("workspaceStorage")
     }

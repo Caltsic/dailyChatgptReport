@@ -1,3 +1,15 @@
+# 0.7.2 Ubuntu 包元数据与代码检查清理
+
+日期：2026-11-12。功能与 0.7.1 相同；本轮完善 Linux 包元数据、清理 clippy 告警并重建交付物。
+
+本轮验证路径：
+
+- deb 元数据：`bundle.shortDescription`/`longDescription` 生效——`dpkg-deb -I` 显示 `Description` 与完整描述，桌面入口含 `Comment`；依赖列表不再重复（`Depends: libssl3, xdg-utils, fonts-noto-cjk` + 打包器自动添加的 WebKitGTK 4.1/GTK3/AppIndicator）。
+- 安装复验：deb 在 WSL Ubuntu 22.04 内 `apt install` 安装成功，已安装二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。
+- 代码检查：`cargo clippy` 在成员端、`--features leader`、`--no-default-features` 三种配置下均为 0 警告（修正 3 处风格问题，1 处对压缩代码的 `possible_missing_else` 豁免）；成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。
+- 交付物 0.7.2（本机重建，不进入源码仓库）：Windows 成员端安装包 2,417,637 字节（SHA-256 `9F145C0FB8C540AC6FF1B8F5E258E7C8DA7E3234739B35E96F27B77DE6C7AA5B`），组长端 27,915,474 字节（`E0935C3D2896AC7A9B5277442C4F53944AC05B76B60C42463EBC241DC9F036AA`），Ubuntu 成员端 deb 3,992,952 字节（`E3E02E100B68FA0584EABC5AEA14D8DCB202EA591A354A1268A775B3010ED470`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.7.2 实际启动正常（`artifacts/acceptance/runtime-0.7.2/result.json`）。
+- 边界：仅元数据/检查清理，功能与 0.7.1 相同；未调用模型。
+
 # 0.7.1 Trae 导出多会话拆分
 
 日期：2026-11-12。成员端 Trae 导出解析增强；仍无真实 Trae 导出样本，规则来自公开资料与常见数据结构。

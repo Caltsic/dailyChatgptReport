@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "CodexDailyReport Member",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "identifier": "cn.codexdailyreport.member",
   "mainBinaryName": "CodexDailyReport.Member",
   "build": {
@@ -19,13 +19,15 @@
     "targets": ["nsis"],
     "icon": ["icons/icon.ico", "icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"],
     "category": "Productivity",
+    "shortDescription": "Codex 部门工作日报成员端：采集并上传本机 Codex、DeepSeek Harness 与 Trae 记录",
+    "longDescription": "本地优先的部门 Codex 工作日报：成员端采集并上传 Codex、DeepSeek Harness、Trae 记录，组长端生成、复核并导出报告。数据按部门独立保存，不读取项目文件或附件。",
     "windows": {
       "webviewInstallMode": {"type":"downloadBootstrapper"},
       "nsis": {"installMode":"currentUser", "languages":["SimpChinese"], "displayLanguageSelector":false, "installerHooks":"installer-hooks.nsh"}
     },
     "linux": {
       "deb": {
-        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libayatana-appindicator3-1", "libssl3", "xdg-utils", "fonts-noto-cjk"]
+        "depends": ["libssl3", "xdg-utils", "fonts-noto-cjk"]
       }
     }
   }

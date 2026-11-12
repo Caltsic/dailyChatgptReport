@@ -1,3 +1,9 @@
+## 0.7.2 Ubuntu 包元数据与 clippy 清理
+
+- deb 增加 shortDescription/longDescription（控制信息 Description、桌面 Comment），依赖去重（WebKitGTK/GTK3/AppIndicator 自动加入，仅显式声明 libssl3/xdg-utils/fonts-noto-cjk）。
+- 修复 3 处 clippy 风格告警，1 处压缩代码 possible_missing_else 豁免；成员端/组长端/无桌面核心三种配置 clippy 0 警告，测试 26/29/26 通过。
+- 版本 0.7.2，双端与 deb 重建；deb 安装/无头启动/卸载保留数据复验，Windows 发布目录双端启动正常。
+
 ## 0.7.1 附：WAL 实时读取回归与交付复核
 
 - 新增实时 WAL 测试：写入连接保持打开、记录仅在 `-wal` 时采集仍能读到（复制 db+wal+shm 的快照逻辑得到验证）；成员端 26 项/组长端 29 项/无桌面核心 26 项通过。

@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.7.1（2026-11-12）**。本次增强 Trae 导出 JSON 的多会话处理：单个 JSON/JSONL 文件里包含多条会话记录时（如社区工具解密导出的 data dump），按 `session_id`/标题拆分成独立会话，不再合并；同时支持 `raw_messages` 嵌套包装与 JSONL 每条记录一个会话。0.7.0 的“Trae 本地记录”（国际版明文工作区）不变；成员端不读取 Trae CN 加密库、不做进程内存扫描。真实 Trae 导出样本仍待提供。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.7.2（2026-11-12）**。本次完善 Ubuntu deb 包元数据（补上简介/描述与桌面入口注释、依赖去重）并清理 clippy 告警（三种构建配置均为 0 警告）；功能与 0.7.1 相同。0.7.1 已支持 Trae 导出 JSON 多会话拆分；成员端不读取 Trae CN 加密库、不做进程内存扫描，真实 Trae 导出样本仍待提供。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.7.2 完善 Ubuntu 包元数据与代码检查：deb 控制信息补上 Description/桌面 `Comment`、依赖去重（WebKitGTK 4.1/GTK3/AppIndicator 由打包器自动添加）；`cargo clippy` 在成员端、组长端、无桌面核心三种配置下 0 警告；deb 安装/无头启动/卸载保留数据复验，Windows 双端与 deb 0.7.2 重建并复验启动。成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。功能与 0.7.1 相同，未调用模型。
 
 0.7.1 增强 Trae 导出 JSON 的多会话拆分：成员端 25 项、组长端 28 项、无桌面核心 25 项库回归通过（新增 3 项：JSON dump 多会话、JSONL 按 session_id 分组、无 session_id 的 list 包装）；隔离 HTTPS 验收 `verify_trae_import` 覆盖 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件，组长端校验通过；另补实时 WAL 读取回归（写入连接保持打开时仍能采集）与源码包 clean-room 构建（解压后无桌面核心 26 项测试通过）。Windows 双端与 Ubuntu deb 0.7.1 重建并复验启动/安装。边界：仍无真实 Trae 导出样本，拆分规则基于公开数据结构，真实样本到位后复核；未调用模型。
 
