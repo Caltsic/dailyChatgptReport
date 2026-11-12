@@ -23,3 +23,13 @@ dialog.capture-dialog{width:min(1240px,calc(100vw - 36px));height:min(860px,calc
 .piece-list td:first-child { min-width: 130px; }
 .piece-list td:nth-child(2) { min-width: 70px; }
 .analysis-settings { margin: 20px 0; }
+
+/* Multi-source member UI: source badges and the record-source dialog. */
+.source-row { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.source-row:last-child { border-bottom: 0; }
+.source-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.source-toggle input { width: auto; }
+.source-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.source-actions span { overflow-wrap: anywhere; }
+.source-actions button { font-size: 12px; padding: 5px 10px; }
+.source-summary { margin-bottom: 12px; }

@@ -1,3 +1,17 @@
+# 0.4.0 多来源采集（Codex + DeepSeek Harness）
+
+日期：2026-11-12。成员端采集与组长端提示词更新。需求来自用户确认：Linux 版本只做成员端；Trae 安装在 Windows、样本待提供；DSH 部门成员普遍使用；单条记录设上限；顺序为 0.4 多来源、0.5 Linux 成员端、Trae。
+
+本轮验证涉及的路径：
+
+- 采集层回归（9 项库测试，`cargo test --lib` 与 `--features leader` 均通过）：Codex 既有结构、脱敏、跨日、归档与损坏行行为保持；Codex 新增超长事件截断与修改时间预筛；DSH v4 可见事件映射与内部记录排除（system/message、request/header、注入型 user/message、title LLM、delivery）；DSH 继承会话按 `session/end-seed` 截点跳过历史、缺少截点时整会话跳过并告警；旧/较新格式提示；损坏尾部容错；跨日过滤；超长工具结果截断标注。
+- 真实本机数据只读探针（`cargo run --example verify_sources -- --dsh %USERPROFILE%\.dsh --codex %USERPROFILE%\.codex`）：2026-11-12 当日 6 个会话（Codex 1、DSH 5）、1083 条事件，采集耗时约 1.1 秒；结构化核对 DSH 内部记录（系统提示、请求头、会话日志投递）进入采集的数量为 0；未上传、未写入报告、未修改本机会话。结果：`artifacts/acceptance/multi-source/probe-20261112-*.json`（本机副本，不进入发布包）。
+- 隔离目录实际 HTTPS 多来源闭环（`cargo run --features leader --example verify_multi_source`）：成员端分别配置 Codex 与 DSH 来源，采集得到 2 个会话；DSH 会话标题、项目、来源和子代理字段保留，预览包含可见对话/工具结果且不含系统提示、推理与注入上下文；选择两类会话后经实际 HTTPS 上传，组长端协议校验通过，快照为 2 会话 6 事件，事件带 `tool`、快照带 `sources` 摘要，内部记录未出现。结果：`artifacts/acceptance/multi-source/latest-result.json`。
+- 既有选择流程回归（`verify_selection`）：新的来源配置操作下，选择、冻结快照、离线排队、重复确认、排除会话与空记录语义全部保持；会话选择记忆仍以 Codex 路径为键。结果：`artifacts/acceptance/tauri-selection/latest-result.json`。
+- TypeScript/Vite 构建、`cargo check --examples --features leader`、Windows 双端 Release 与 NSIS 安装包构建通过（版本 0.4.0，产物与校验见 `artifacts/installers/SHA256.txt`）。
+
+未验证与边界：本轮不调用外部模型，`personal.v3`、`extract.v2` 的提示词改动只验证了资源加密/解密与构建，未在实际模型上生成报告；Trae 本地记录未接入（其 Windows 安装目录与导出样本待用户提供）；Linux 成员端为 0.5 范围；真实 DSH 探针只读取当日本机会话，不代表其他成员机器与历史格式的覆盖。未修改生产数据、未上传真实工作记录。
+
 # 0.3.6 成员补充版本冲突
 
 日期：2026-11-10。仅更新成员端，组长端沿用 0.3.5。组长拒绝旧正文或旧来源的补充符合版本规则；缺陷是成员界面仍允许提交，且旧版队列只显示 HTTP 409，未给出可继续操作的路径。

@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         json!({"type":"session_meta","payload":{"id":"network-check"}}),
         json!({"timestamp":common::now(),"type":"response_item","payload":{"type":"message",
             "role":"user","content":[{"type":"input_text","text":"自动 IP 软件验证样例"}]}})))?;
-    member.dispatch("member.codexRoot", json!({"path":root.join("sample-codex")})).await?;
+    support::codex_only(&member, &root.join("sample-codex")).await?;
     let receipt = support::submit_selected(&member, &common::today("Asia/Shanghai")?).await?;
     ensure!(receipt["received"] == true && receipt["eventCount"] == 1, "LAN submission failed: {receipt}");
 

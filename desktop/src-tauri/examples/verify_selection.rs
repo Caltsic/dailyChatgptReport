@@ -1,4 +1,6 @@
 // A single HTTPS workflow for local selection, frozen upload, retry and empty-record semantics.
+mod support;
+
 use anyhow::{ensure, Context, Result};
 use daily_report::{common, leader::Leader, member::MemberClient};
 use serde_json::{json, Value};
@@ -53,7 +55,7 @@ async fn main() -> Result<()> {
     let invitation = leader.dispatch("leader.invite", json!({"memberId":employee["id"]})).await?;
     let member = MemberClient::new(member_root.clone())?;
     member.dispatch("member.pair", json!({"invitation":invitation["invitation"]})).await?;
-    member.dispatch("member.codexRoot", json!({"path":logs})).await?;
+    support::codex_only(&member, &logs).await?;
     let initial = member.dispatch("member.collect", json!({"day":day})).await?;
     ensure!(ids(&initial).len() == 3, "First collection must select all sessions");
     let mut previews = serde_json::Map::new();
@@ -101,7 +103,7 @@ async fn main() -> Result<()> {
     ensure!(empty_selected.to_string().contains("本次未选择上传会话") && !empty_selected.to_string().contains("未发现可用工作记录")
         && !empty_selected.to_string().contains("PRIVATE_EXCLUDED"), "Intentional-empty explanation incorrect");
     let empty_logs = root.join("empty-codex"); fs::create_dir_all(empty_logs.join("sessions"))?;
-    member.dispatch("member.codexRoot", json!({"path":empty_logs})).await?;
+    support::codex_only(&member, &empty_logs).await?;
     let empty = member.dispatch("member.collect", json!({"day":day})).await?;
     member.dispatch("member.submit", json!({"draftId":empty["draftId"],"sessionIds":[]})).await?;
     let empty_found = capture(&leader, &day, 3)?;

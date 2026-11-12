@@ -1,3 +1,15 @@
+## 0.4 多来源采集（Codex + DeepSeek Harness）
+
+- 需求经用户确认：Linux 版本只做成员端；Trae 安装在 Windows、本地数据样本待提供；DSH 部门成员普遍使用，只读本地会话文件可接受；单条记录设上限；顺序 0.4 多来源 → 0.5 Linux 成员端 → Trae。
+- 采集层重构为 `collector` 编排 + `collector/codex.rs` + `collector/dsh.rs`。Codex 逻辑与事件 ID 保持不变，新增按文件修改时间跳过不可能含当日事件的日志（本机实测采集从约 8 秒降到约 1 秒）。
+- DSH 读取 `$DSH_HOME`（默认 `~/.dsh`，可自定义）下的 `sessions/--<cwd>--/<session-id>/session.vN.jsonl[.zstd]`，选择最高代际，仅解析当前 v4（Zstandard 多帧或 compression:none）。可见映射：`user/message`（仅 source.kind=user/agent-message）、`assistant/message` 的 text 块、`tool/call`、`tool/result`；排除 system/message、request/*、agent/inbox/spliced、title LLM、delivery、permission/sandbox/approval/turn/step 等内部记录。继承会话按最后带标记的 `session/end-seed` 跳过历史，缺少截点时整会话跳过并告警；旧格式 v0–v3 与较新版本跳过，仅当文件当日被修改才提示，避免历史会话长期误报；尾部半帧容错。
+- 单条事件文本超过 200000 字符截断并在正文标注，采集说明同时注明上限；本机完整日志不改动。
+- 成员端新增 `member.sources`、`sources.json`、`member.init.sources`；`member.codexRoot` 保留为兼容操作（仅启用 Codex）。会话选择记忆仍以 Codex 路径为键，升级后旧选择保留，新来源会话默认不选。
+- 会话 ID：Codex 保持原值，DSH 使用 `dsh:<id>`；会话与事件新增 `tool`/`toolLabel`，capture 新增 `sources` 摘要。协议仍为 1，旧组长端忽略新增字段。
+- UI：记录来源对话框（启用/自定义目录）、会话列表来源筛选与标签、预览显示来源、采集说明列出来源、配对同意书更新数据范围。
+- 提示词：新增 `personal.v3`、`extract.v2` 说明多来源；`build.rs`、`common.rs`、`leader_runtime.rs` 更新提示词版本。`department.v2`、`merge.v1` 未改；提示词仅验证资源加密/解密与构建，本轮未调用模型。
+- 验收：9 项库回归；真实本机 DSH+Codex 只读探针（6 会话、1083 事件、内部记录泄漏 0、约 1.1 秒）；隔离 HTTPS 多来源上传与组长端快照校验；选择流程回归；前端构建；Windows 双端 0.4.0 安装包重建。证据见 `VALIDATION.md` 与 `artifacts/acceptance/multi-source`。
+
 ## 0.3.6 成员补充版本冲突
 
 - 已确认 HTTP 409 来自旧正文/来源补充提交；本机缓存显示日报来源为第2次提交、当前记录为第7次提交，未有对应新版日报。成员界面只检查定稿状态，未同步阻止旧来源提交。

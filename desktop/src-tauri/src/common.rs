@@ -84,13 +84,28 @@ pub fn delete(c:&Connection,kind:&str,id:&str)->Result<()> { c.execute("DELETE F
 pub fn prompt(kind:&str)->Result<String> {
     use aes_gcm::{aead::Aead,Aes256Gcm,KeyInit,Nonce};
     let data:&[u8]=match kind {
-        "personal" => include_bytes!(concat!(env!("OUT_DIR"),"/personal.v2.enc")),
+        "personal" => include_bytes!(concat!(env!("OUT_DIR"),"/personal.v3.enc")),
         "department" => include_bytes!(concat!(env!("OUT_DIR"),"/department.v2.enc")),
-        "extract" => include_bytes!(concat!(env!("OUT_DIR"),"/extract.v1.enc")),
+        "extract" => include_bytes!(concat!(env!("OUT_DIR"),"/extract.v2.enc")),
         "merge" => include_bytes!(concat!(env!("OUT_DIR"),"/merge.v1.enc")),
         _ => anyhow::bail!("未知内置提示词：{kind}"),
     };
     let key=Sha256::digest(b"CodexDailyReport:leader-resource:v1:2026");
     let plain=Aes256Gcm::new_from_slice(&key).unwrap().decrypt(Nonce::from_slice(&data[..12]),&data[12..]).map_err(|_|anyhow::anyhow!("内置提示词资源无效"))?;
     Ok(String::from_utf8(plain)?)
+}
+
+#[cfg(all(test,feature="leader"))]
+mod prompt_tests {
+    #[test]
+    fn built_in_prompts_decrypt_and_describe_multiple_sources() {
+        let personal=super::prompt("personal").unwrap();
+        assert!(personal.contains("Codex")&&personal.contains("DeepSeek Harness"));
+        assert!(personal.contains("多个来源"));
+        let extract=super::prompt("extract").unwrap();
+        assert!(extract.contains("多个 AI 工具"));
+        assert!(super::prompt("department").unwrap().contains("部门"));
+        assert!(super::prompt("merge").unwrap().len()>100);
+        assert!(super::prompt("unknown").is_err());
+    }
 }

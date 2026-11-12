@@ -35,8 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib migrated_collector
-      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --features leader --lib migrated_collector
+      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib
+      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --features leader --lib
 
   agent:
     name: Agent local fixture checks

@@ -1,6 +1,6 @@
 [package]
 name = "codex-daily-report"
-version = "0.3.6"
+version = "0.4.0"
 edition = "2021"
 
 [lib]
@@ -52,6 +52,7 @@ zip = { version = "4.6", default-features = false, features = ["deflate"], optio
 webview2-com = { version = "0.39", optional = true }
 rcgen = { version = "0.13", optional = true }
 p12 = { version = "0.6", optional = true }
+zstd = "0.14"
 
 [profile.release]
 opt-level = "s"

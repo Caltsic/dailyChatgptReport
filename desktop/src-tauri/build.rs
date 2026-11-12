@@ -10,7 +10,7 @@ fn main() {
         let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
         let key = Sha256::digest(b"CodexDailyReport:leader-resource:v1:2026");
         let cipher = Aes256Gcm::new_from_slice(&key).unwrap();
-        for name in ["personal.v2", "department.v2", "extract.v1", "merge.v1"] {
+        for name in ["personal.v3", "department.v2", "extract.v2", "merge.v1"] {
             let source = format!("../../prompts/{name}.txt");
             println!("cargo:rerun-if-changed={source}");
             let nonce_bytes = uuid::Uuid::new_v4();

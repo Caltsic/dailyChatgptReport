@@ -2,6 +2,8 @@ export interface AppInfo { role: 'Member' | 'Leader'; version: string; day: stri
 export interface Invitation { url: string; fingerprint: string; code: string; department: string; modelDestination: string; timeZone: string; protocol: number }
 export interface Pairing { url: string; fingerprint: string; identity: { memberName: string; departmentName: string; modelDestination: string; timeZone: string } }
 export interface Outbox { id: string; createdAt: string; kind: string; error?: string }
+export interface SourceStatus { tool: string; label: string; enabled: boolean; path: string; effectivePath: string; detected: boolean }
+export interface MemberInit { pairing?: Pairing; codexRoot: string; sources: SourceStatus[]; queue: Outbox[] }
 export interface Finding { text: string; status?: string; evidenceIds?: string[]; reportIds?: string[]; personalStatement?: boolean }
 export interface Report {
   id: string; memberId?: string; memberName?: string; department: string; day: string; version: number;
@@ -21,12 +23,13 @@ export interface MemberState { status?: MemberStatus; queue: Outbox[]; syncMessa
 export interface CaptureSession {
   id: string; title: string; project: string; firstAt: string; lastAt: string;
   eventCount: number; warnings: string[]; selected: boolean; isNew: boolean;
+  tool?: string; toolLabel?: string;
 }
 export interface CaptureDraft {
   draftId: string; day: string; timeZone: string; capturedAt: string;
   sessions: CaptureSession[]; warnings: string[];
 }
-export interface CaptureEvent { id: string; sessionId: string; timestamp: string; kind: string; text: string; source: string }
+export interface CaptureEvent { id: string; sessionId: string; timestamp: string; kind: string; text: string; source: string; tool?: string }
 export interface CapturePreview { events: CaptureEvent[]; warnings: string[] }
 export interface SubmissionResult { received?: boolean; syncMessage?: string; sessionCount?: number; eventCount?: number }
 export interface Settings { id: string; name: string; timeZone: string; port: number; advertisedUrl: string; addressMode?: 'auto' | 'manual'; apiBaseUrl: string; model: string; chunkCharacters: number; contextTokens?: number; outputReserveTokens?: number; chunkTokens?: number }

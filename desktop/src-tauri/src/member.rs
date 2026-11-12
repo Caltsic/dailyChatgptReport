@@ -167,6 +167,40 @@ struct OutboxItem {
     error: Option<String>,
 }
 
+/// Tools whose local records can be collected, in the order shown to members.
+const SOURCE_TOOLS: [(&str, &str); 2] = [
+    ("codex", collector::LABEL_CODEX),
+    ("dsh", collector::LABEL_DSH),
+];
+
+#[derive(Clone, Deserialize, Serialize)]
+struct SourceConfig {
+    tool: String,
+    enabled: bool,
+    #[serde(default)]
+    path: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SourcesConfig {
+    sources: Vec<SourceConfig>,
+}
+
+fn source_index(tool: &str) -> usize {
+    SOURCE_TOOLS
+        .iter()
+        .position(|(name, _)| *name == tool)
+        .unwrap_or(usize::MAX)
+}
+
+fn source_label(tool: &str) -> &'static str {
+    SOURCE_TOOLS
+        .iter()
+        .find(|(name, _)| *name == tool)
+        .map(|(_, label)| *label)
+        .unwrap_or("")
+}
+
 pub struct MemberClient {
     root: PathBuf,
     sync: Mutex<()>,
@@ -218,10 +252,167 @@ impl MemberClient {
         }
     }
 
+    fn default_source(&self, tool: &str) -> SourceConfig {
+        match tool {
+            "codex" => {
+                let legacy = fs::read_to_string(self.root.join("codex-root.txt"))
+                    .ok()
+                    .map(|value| value.trim().to_owned())
+                    .filter(|value| !value.is_empty());
+                let path = legacy.unwrap_or_default();
+                let effective = if path.is_empty() {
+                    collector::default_root()
+                } else {
+                    PathBuf::from(&path)
+                };
+                SourceConfig {
+                    tool: tool.to_owned(),
+                    enabled: effective.is_dir(),
+                    path,
+                }
+            }
+            _ => {
+                let effective = collector::default_dsh_root();
+                SourceConfig {
+                    tool: tool.to_owned(),
+                    enabled: effective.is_dir(),
+                    path: String::new(),
+                }
+            }
+        }
+    }
+
+    fn effective_source_path(config: &SourceConfig) -> PathBuf {
+        if config.path.trim().is_empty() {
+            match config.tool.as_str() {
+                "codex" => collector::default_root(),
+                _ => collector::default_dsh_root(),
+            }
+        } else {
+            PathBuf::from(config.path.trim())
+        }
+    }
+
+    fn sources_config(&self) -> Result<Vec<SourceConfig>> {
+        let path = self.root.join("sources.json");
+        if path.exists() {
+            let stored: SourcesConfig =
+                serde_json::from_str(&fs::read_to_string(&path)?).context("记录来源配置无法读取")?;
+            let mut configs = stored.sources;
+            for (tool, _) in SOURCE_TOOLS {
+                if !configs.iter().any(|config| config.tool == tool) {
+                    configs.push(self.default_source(tool));
+                }
+            }
+            configs.retain(|config| {
+                SOURCE_TOOLS
+                    .iter()
+                    .any(|(tool, _)| *tool == config.tool)
+            });
+            configs.sort_by_key(|config| source_index(&config.tool));
+            return Ok(configs);
+        }
+        Ok(SOURCE_TOOLS
+            .iter()
+            .map(|(tool, _)| self.default_source(tool))
+            .collect())
+    }
+
+    fn save_sources(&self, sources: &[SourceConfig]) -> Result<()> {
+        atomic_text(
+            &self.root.join("sources.json"),
+            &serde_json::to_string(&SourcesConfig {
+                sources: sources.to_vec(),
+            })?,
+        )
+    }
+
+    fn source_roots(&self) -> Result<collector::SourceRoots> {
+        let mut roots = collector::SourceRoots::default();
+        for config in self.sources_config()? {
+            if !config.enabled {
+                continue;
+            }
+            let path = Self::effective_source_path(&config);
+            match config.tool.as_str() {
+                "codex" => roots.codex = Some(path),
+                "dsh" => roots.dsh = Some(path),
+                _ => {}
+            }
+        }
+        Ok(roots)
+    }
+
+    fn source_status(&self) -> Result<Vec<Value>> {
+        let mut rows = Vec::new();
+        for config in self.sources_config()? {
+            let effective = Self::effective_source_path(&config);
+            rows.push(json!({"tool":config.tool,"label":source_label(&config.tool),
+                "enabled":config.enabled,"path":config.path,
+                "effectivePath":effective.to_string_lossy(),"detected":effective.is_dir()}));
+        }
+        Ok(rows)
+    }
+
+    fn store_sources(&self, entries: &[Value]) -> Result<Vec<SourceConfig>> {
+        let current = self.sources_config()?;
+        let mut next = Vec::new();
+        for entry in entries {
+            let tool = text(entry, "tool");
+            if !SOURCE_TOOLS.iter().any(|(name, _)| *name == tool) {
+                bail!("未知记录来源：{tool}");
+            }
+            let enabled = entry["enabled"].as_bool().unwrap_or(false);
+            let raw = text(entry, "path").trim().to_owned();
+            let path = if raw.is_empty() {
+                String::new()
+            } else {
+                let candidate = PathBuf::from(&raw);
+                if !candidate.is_dir() {
+                    bail!("记录目录不存在：{raw}");
+                }
+                candidate.canonicalize()?.to_string_lossy().into_owned()
+            };
+            if enabled {
+                let effective = Self::effective_source_path(&SourceConfig {
+                    tool: tool.to_owned(),
+                    enabled,
+                    path: path.clone(),
+                });
+                if !effective.is_dir() {
+                    bail!("记录目录不存在：{}", effective.display());
+                }
+            }
+            next.push(SourceConfig {
+                tool: tool.to_owned(),
+                enabled,
+                path,
+            });
+        }
+        for (tool, _) in SOURCE_TOOLS {
+            if !next.iter().any(|config| config.tool == tool) {
+                next.push(
+                    current
+                        .iter()
+                        .find(|config| config.tool == tool)
+                        .cloned()
+                        .unwrap_or_else(|| self.default_source(tool)),
+                );
+            }
+        }
+        next.sort_by_key(|config| source_index(&config.tool));
+        self.save_sources(&next)?;
+        Ok(next)
+    }
+
+    /// Day-selection memory keeps using the Codex path so existing choices survive
+    /// the upgrade to multiple sources.
     fn codex_root(&self) -> PathBuf {
-        fs::read_to_string(self.root.join("codex-root.txt"))
-            .map(|p| PathBuf::from(p.trim()))
-            .unwrap_or_else(|_| collector::default_root())
+        self.sources_config()
+            .ok()
+            .and_then(|configs| configs.into_iter().find(|config| config.tool == "codex"))
+            .map(|config| Self::effective_source_path(&config))
+            .unwrap_or_else(collector::default_root)
     }
 
     fn items(&self) -> Result<Vec<OutboxItem>> {
@@ -469,7 +660,8 @@ impl MemberClient {
     pub async fn dispatch(&self, op: &str, args: Value) -> Result<Value> {
         match op {
             "member.init" => Ok(
-                json!({"pairing":Self::public_pairing(self.pairing()?),"codexRoot":self.codex_root(),"queue":self.queue()?}),
+                json!({"pairing":Self::public_pairing(self.pairing()?),"codexRoot":self.codex_root(),
+                    "sources":self.source_status()?,"queue":self.queue()?}),
             ),
             "member.pair" => {
                 let invitation: Value = serde_json::from_slice(
@@ -552,15 +744,20 @@ impl MemberClient {
                 self.enqueue("feedback", json!({"requestId":id(),"reportId":report_id,"text":supplement,"noSupplement":none}))?;
                 Ok(json!({"syncMessage":self.flush().await?}))
             }
+            "member.sources" => {
+                let entries = args["sources"]
+                    .as_array()
+                    .context("记录来源配置无效")?;
+                self.store_sources(entries)?;
+                Ok(json!({"sources":self.source_status()?}))
+            }
             "member.codexRoot" => {
                 let path = Path::new(text(&args, "path"));
                 if !path.is_dir() {
                     bail!("记录目录不存在");
                 }
-                atomic_text(
-                    &self.root.join("codex-root.txt"),
-                    &path.canonicalize()?.to_string_lossy(),
-                )?;
+                let canonical = path.canonicalize()?.to_string_lossy().into_owned();
+                self.store_sources(&[json!({"tool":"codex","enabled":true,"path":canonical})])?;
                 Ok(Value::Null)
             }
             "member.download" => {

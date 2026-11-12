@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
         json!({"type":"session_meta","payload":{"id":"preview-check"}}),
         json!({"timestamp":common::now(),"type":"response_item","payload":{"type":"message","role":"user",
             "content":[{"type":"input_text","text":"软件验证样例：检查自动下发和报告预览。"}]}})))?;
-    member.dispatch("member.codexRoot", json!({"path":root.join("sample-codex")})).await?;
+    support::codex_only(&member, &root.join("sample-codex")).await?;
     let day = common::today("Asia/Shanghai")?;
     support::submit_selected(&member, &day).await?;
     leader.clone().start().await?;
