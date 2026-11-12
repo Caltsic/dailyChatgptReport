@@ -23,6 +23,12 @@ async fn main() -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(180);
+    // Cross-platform Linux acceptance uses an SSH reverse tunnel: the member reaches the
+    // tunnel port while the real leader keeps listening on `--port`.
+    let advertised_port: u16 = arg("--advertised-port")
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(port);
     fs::create_dir_all(&root)?;
 
     let day = common::today(&zone)?;
@@ -31,7 +37,7 @@ async fn main() -> Result<()> {
         .dispatch(
             "leader.configure",
             json!({"settings":{"id":common::id(),"name":"跨端 Linux 验证部门","timeZone":zone,"port":port,
-                "addressMode":"manual","advertisedUrl":format!("https://127.0.0.1:{port}"),
+                "addressMode":"manual","advertisedUrl":format!("https://127.0.0.1:{advertised_port}"),
                 "apiBaseUrl":"","model":""},"apiKey":""}),
         )
         .await?;

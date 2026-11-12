@@ -1,3 +1,13 @@
+# 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
+
+日期：2026-11-12。用 xdotool 在 Ubuntu 24.04.5 + WSLg 的真实窗口里驱动成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”，并由真实 Windows 组长端（HTTPS + 生产上传校验）接收。
+
+- 环境与链路：Ubuntu 24.04.5（WSL2 导入发行版）、WSLg 1.0.71；成员端为交付的 0.7.0 deb（apt 安装，WebKitGTK 4.1）；组长端为 Windows 上当前源码构建的 `verify_cross_platform_leader`（127.0.0.1:18510）。WSL 不能直连 Windows，使用 Windows→WSL 的 SSH 反向隧道：邀请中的地址为 `https://127.0.0.1:18511`，经 sshd 转发到 Windows 的 18510，TLS 与邀请指纹校验仍是端到端真实链路。为此给验收示例增加了 `--advertised-port` 参数（仅测试工具，产品未改）。
+- 流程与结果：真实窗口点击“绑定部门”→ 用 X11 剪贴板粘贴邀请 → Tab/Return 提交并接受同意书（界面显示 `跨端 Linux 验证部门 / 跨端 Linux 验证成员`）→ 点击“采集并选择会话”，选择器显示 Codex/DeepSeek Harness/Trae 导出三个来源、3 会话/6 记录及脱敏预览 → 点击“确认上传 3 个会话”。组长端结果 `ok=true, protocol=1, sessionCount=3, eventCount=6`，`eventsByTool` codex=2/dsh=2/trae=2，`validatedBy=leader.validate_capture`；成员界面显示“已收到”，采集截至时间与 3 个会话正确。
+- 证据：`artifacts/acceptance/linux-gui-flow/20261112-194826/`（`01-main.png` … `09-status.png`、`leader-result.json`、`leader.log`、`tunnel.log`、`environment.txt`、复现脚本 `fixtures.sh`/`gui-flow.sh`）。
+- 说明：截图里的“当前未连接部门端，显示本机缓存：unexpected EOF”是因为验收用组长示例在写结果后退出；`已收到` 来自上传成功时的缓存状态，生产组长持续运行不会有该提示。该最小 cloud-image 未装彩色 emoji 字体，状态徽标 emoji 显示为方框，文字与状态本身正确。
+- 边界：仅合成夹具，无真实 Trae 数据、未调用模型；WSLg 是虚拟显示而非物理桌面/面板。
+
 # 0.7.0 附：Windows 成员端界面全流程（界面驱动）
 
 日期：2026-11-12。用 UI Automation 在真实 Windows 桌面会话里驱动 0.7.0 成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”的完整流程，并用真实组长端（本机 HTTPS + 生产上传校验）接收。

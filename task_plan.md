@@ -1,3 +1,10 @@
+# 0.7.0 附：Ubuntu 24.04 成员端界面全流程
+
+- [x] WSL 24.04 中 xdotool 驱动真实 GUI：绑定部门→采集并选择会话→预览→确认上传；界面显示已收到。
+- [x] Windows 组长端经 SSH 反向隧道接收并通过生产校验（protocol 1、3 会话/6 事件）；示例增加 `--advertised-port` 测试参数。
+- [x] 证据 `artifacts/acceptance/linux-gui-flow/20261112-194826`，文档更新。
+- [ ] 物理 Ubuntu 桌面/GNOME 面板、HiDPI、真实 Trae 数据、内网直连仍待环境。
+
 # 0.7.0 附：Windows 成员端界面全流程
 
 - [x] UIA 驱动完整界面流程：绑定部门→采集并选择会话→预览→上传；组长端校验通过（3 会话/6 事件，protocol 1），成员状态 🟢 已收到。

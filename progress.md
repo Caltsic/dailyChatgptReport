@@ -1,3 +1,9 @@
+## 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
+
+- 在本机导入的 Ubuntu 24.04.5 + WSLg 环境中，用 xdotool 驱动交付的 0.7.0 成员端真实界面：绑定部门（X11 剪贴板粘贴邀请）→ 同意书 → 采集并选择会话（Codex/DSH/Trae 3 来源、3 会话/6 记录、脱敏预览）→ 确认上传；界面显示“已收到”。
+- 链路：WSL 不能直连 Windows，用 Windows→WSL SSH 反向隧道，邀请地址 `https://127.0.0.1:18511`→Windows 组长 18510，TLS 与指纹端到端；给验收示例加了 `--advertised-port`（仅测试工具）。组长端 `leader.validate_capture` 通过：protocol 1、3 会话/6 事件、codex/dsh/trae 各 2。
+- 证据 `artifacts/acceptance/linux-gui-flow/20261112-194826`（01–09 截图、leader/tunnel 日志、environment.txt、复现脚本）。边界：合成数据；验收组长示例写结果后退出，界面出现离线缓存提示；最小镜像缺彩色 emoji 字体。
+
 ## 0.7.0 附：Windows 成员端界面全流程（UIA 驱动）
 
 - 用 UI Automation 在真实 Windows 桌面驱动 0.7.0 成员端：绑定部门（ValuePattern 粘贴邀请）→ 同意并绑定 → 采集并选择会话（真实选择器展示 Codex/DSH/Trae 三来源、3 会话/6 记录、Trae 脱敏提示）→ 确认上传 3 个会话；组长端（`verify_cross_platform_leader`，当前源码重建）校验通过（protocol 1、3 会话/6 事件），成员状态 🟢 已收到。
