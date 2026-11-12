@@ -1,3 +1,9 @@
+## 0.7.1 Trae 导出多会话拆分
+
+- 单个 JSON/JSONL 文件中多条会话记录（社区工具解密导出 data dump 常见）按 session_id/标题拆分为独立会话，不再合并；支持 messages/raw_messages 嵌套、list/sessions/conversations 包装、JSONL 每条记录一个会话；标题优先 session_title/title、其次首条用户消息；来源 id 稳定且互不重复。单会话文件行为不变。
+- 新增 3 项回归（JSON dump 多会话、JSONL 分组、无 id 的 list 包装），成员端 25 项/组长端 28 项/无桌面核心 25 项通过；隔离 HTTPS verify_trae_import 扩展为 5 会话/10 事件，组长端校验通过。
+- 版本 0.7.1，双端与 deb 重建。真实 Trae 导出样本仍待提供。
+
 ## 0.7.0 最终回归（交付前复核）
 
 - 成员端 22 项、组长端 25 项、无桌面核心 22 项库回归通过；verify_multi_source / verify_selection / verify_trae_import 三条隔离 HTTPS 验收通过。

@@ -1,5 +1,22 @@
 # 变更记录
 
+## [0.7.1] - 2026-11-12
+
+### 新增
+
+- Trae 导出 JSON 支持**多会话拆分**：一个 JSON/JSONL 文件里包含多条会话记录时（例如社区工具解密导出的 data dump，数组元素带 `session_id`/`session_title` 与 `raw_messages`），按 session id/标题分组，不再合并成一个会话；每个会话使用自己的标题（`session_title`/`title` 或首条用户消息）与稳定且互不重复的来源 id；单会话文件行为不变。
+- 支持嵌套会话包装（如 `{session_id, messages:{raw_messages:[...]}}`、`{list:[...]}`、`{sessions:[...]}`、`{conversations:[...]}`）与 JSONL 每条记录一个会话。
+
+### 验证
+
+- 成员端 25 项、组长端 28 项、无桌面核心 25 项库回归通过（新增 3 项：JSON dump 多会话拆分、JSONL 按 session_id 分组、无 session_id 的 list 包装）。
+- 隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件，组长端校验通过。
+- Windows 双端与 Ubuntu 成员端 0.7.1 安装包重建（校验值见 VALIDATION）。
+
+### 边界
+
+- 仍无真实 Trae 导出样本；分组规则来自公开资料与常见结构，真实样本到位后复核。
+
 ## [0.7.0] - 2026-11-12
 
 ### 新增

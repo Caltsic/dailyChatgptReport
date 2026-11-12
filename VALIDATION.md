@@ -1,3 +1,15 @@
+# 0.7.1 Trae 导出多会话拆分
+
+日期：2026-11-12。成员端 Trae 导出解析增强；仍无真实 Trae 导出样本，规则来自公开资料与常见数据结构。
+
+本轮验证路径：
+
+- 变更：JSON/JSONL 文件中包含多条会话记录时（社区工具解密导出的 data dump 常见形态），按 `session_id`/标题拆分为独立会话，不再合并；支持 `messages`/`raw_messages` 嵌套、`list`/`sessions`/`conversations` 包装、JSONL 每条记录一个会话；每会话使用自己的稳定且互不重复的来源 id，标题优先 `session_title`/`title`、其次首条用户消息；单会话文件行为与 0.7.0 一致。
+- 解析回归：成员端 25 项、组长端 28 项、无桌面核心 25 项通过；新增 3 项覆盖 JSON dump 多会话拆分、JSONL 按 session_id 分组、无 session_id 的 list 包装；原有 Markdown/JSONL/跨日/无时间戳/坏文件/提示分类用例保持通过。
+- 隔离 HTTPS：`verify_trae_import` 现包含 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件；组长端 `validate_capture` 通过，快照来源含 codex/trae/traeLocal。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 交付物 0.7.1（本机重建，不进入源码仓库）：Windows 成员端安装包 2,417,735 字节（SHA-256 `BA824636CBF4A099F8AB6914CA801F70CC943667EE75347498ADD312B4D0FDE1`），组长端 27,919,101 字节（`34EB9FA76528E80ECEAC72DC85E887F4EEC8A83C0BF2CD834213BF8770392185`），Ubuntu 成员端 deb 3,994,088 字节（`C63BDFB44E114A60EE1D458FC2E0216F602041A9D0C4028AF1DF099BA681C53A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：无真实 Trae 导出样本，拆分规则基于公开资料和常见结构，真实样本到位后需复核；未调用模型。
+
 # 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
 
 日期：2026-11-12。用 xdotool 在 Ubuntu 24.04.5 + WSLg 的真实窗口里驱动成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”，并由真实 Windows 组长端（HTTPS + 生产上传校验）接收。

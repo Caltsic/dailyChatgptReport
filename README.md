@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.7.0（2026-11-12）**。本次新增“Trae 本地记录”来源：自动读取**国际版** Trae 的明文工作区 `state.vscdb`（`%APPDATA%\Trae\User\workspaceStorage`），按目标日解析用户/助手可见消息；读取前先复制库与 WAL/SHM 保证一致性，加密库会提示改用导出导入。Trae 导出导入继续覆盖 Trae CN 与无本地明文的场景，并支持 `raw_messages` 等包装 JSON。成员端不读取 Trae CN 加密库、不做进程内存扫描。本地读取规则来自公开资料，仍缺真实 Trae 安装复验。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.7.1（2026-11-12）**。本次增强 Trae 导出 JSON 的多会话处理：单个 JSON/JSONL 文件里包含多条会话记录时（如社区工具解密导出的 data dump），按 `session_id`/标题拆分成独立会话，不再合并；同时支持 `raw_messages` 嵌套包装与 JSONL 每条记录一个会话。0.7.0 的“Trae 本地记录”（国际版明文工作区）不变；成员端不读取 Trae CN 加密库、不做进程内存扫描。真实 Trae 导出样本仍待提供。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -59,7 +59,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 - 重交要求包含原因，由成员手动再次提交。重新提交、生成正文均保留旧版本；新正文需要重新复核补充。
 - 已导出的归档不覆盖。后续更正由组长重新开启，生成新的报告版本。正文、补充或有效来源发生变化后，原部门汇总显示来源已更新。
 - 当前个人日报、部门汇总及历史汇总导出均只生成 PDF。旧版已生成的 Word 文件保留在原位置。
-- Trae 有两类来源：**Trae 本地记录**读取国际版 Trae 明文工作区 `state.vscdb`（按目标日解析用户/助手可见消息，读取前复制库与 WAL/SHM 保证一致性；只读取聊天相关键，不读取 agent 工具明细或思考内容；加密/损坏库会提示改用导出导入）；**Trae 导出**支持手动导入 Markdown/TXT/JSON/JSONL，以及带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块）。系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae CN 加密数据库不直接读取、不扫描进程内存；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb` 和 `database.db` 及 `-wal`/`-shm`，全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
+- Trae 导出文件若包含多条会话记录（JSON 数组/JSONL data dump），会按 `session_id`/标题拆分为独立会话；Trae 有两类来源：**Trae 本地记录**读取国际版 Trae 明文工作区 `state.vscdb`（按目标日解析用户/助手可见消息，读取前复制库与 WAL/SHM 保证一致性；只读取聊天相关键，不读取 agent 工具明细或思考内容；加密/损坏库会提示改用导出导入）；**Trae 导出**支持手动导入 Markdown/TXT/JSON/JSONL，以及带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块）。系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae CN 加密数据库不直接读取、不扫描进程内存；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb` 和 `database.db` 及 `-wal`/`-shm`，全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
 
 ## 数据与备份
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.7.1 增强 Trae 导出 JSON 的多会话拆分：成员端 25 项、组长端 28 项、无桌面核心 25 项库回归通过（新增 3 项：JSON dump 多会话、JSONL 按 session_id 分组、无 session_id 的 list 包装）；隔离 HTTPS 验收 `verify_trae_import` 覆盖 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件，组长端校验通过。Windows 双端与 Ubuntu deb 0.7.1 重建并复验启动/安装。边界：仍无真实 Trae 导出样本，拆分规则基于公开数据结构，真实样本到位后复核；未调用模型。
 
 0.7.0 新增“Trae 本地记录”来源（国际版明文 `state.vscdb`）：成员端 22 项库回归通过（新增 5 项：明文读取、跨日过滤、加密库提示、坏载荷跳过、凭据脱敏），组长端 25 项、无桌面核心 22 项通过；隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源，3 会话、6 事件，预览仅含可见内容，组长端校验通过且快照来源含 `traeLocal`；探针合成目录自测、既有 `verify_multi_source`/`verify_selection` 回归、前端构建通过。Windows 双端与 Ubuntu deb 0.7.0 重建并复验启动/安装。交付前最终回归：成员端 22 项、组长端 25 项、无桌面核心 22 项库回归，三条隔离 HTTPS 验收，真实 DSH/Codex 只读探针 7 会话/2611 事件/内部记录泄漏 0（约 2 秒），前端构建与两个 CI/Release 工作流 YAML 解析通过，交付物哈希与 SHA 文件一致。桌面端另在本机 WSL2 的独立 Ubuntu 24.04.5 + WSLg 1.0.71 环境验证：交付的 0.7.0 deb 用 apt 安装（自动补齐 WebKitGTK 4.1 等依赖），成功渲染 1120x820 的“Codex 工作日报 · 成员端”窗口（截图 `artifacts/acceptance/ubuntu-2404-gui/member-window-ubuntu2404.png`），数据目录 0700、无启动错误，DBus 会话内单实例生效（第二次启动退出、窗口保留）。Windows 成员端另用 UI Automation 验证 0.7.0 界面：“记录来源”弹窗中 Codex、DeepSeek Harness、Trae 本地记录、Trae 导出四项均可见并可操作（截图 `artifacts/acceptance/windows-ui-0.7.0/source-dialog.png`），Ubuntu 24.04 弹窗截图同样确认四项来源（`member-source-dialog-ubuntu2404.png`）。此外用 UI Automation 在 Windows 真实桌面走了完整界面流程：绑定部门→采集并选择会话→预览 3 个来源的 3 会话/6 记录→确认上传，组长端校验通过（protocol 1），成员状态显示“已收到”（`artifacts/acceptance/gui-flow/20261112-194009/`）。Ubuntu 24.04（WSLg）上也用 xdotool 驱动了同样的完整界面流程：X11 剪贴板粘贴邀请、同意书、三来源采集预览、确认上传，经 SSH 反向隧道连到真实 Windows 组长端并通过生产校验，界面显示“已收到”（`artifacts/acceptance/linux-gui-flow/20261112-194826/`）。边界：WSLg 不是物理显示器/ GNOME Shell，托盘图标对象创建但未在面板展示；本环境没有真实 Trae 安装，本地读取规则来自公开工具的 `ItemTable`/`messages` 结构，需在装有国际版 Trae 的电脑上复验；Trae CN 仍只支持导出导入，未调用模型。
 

@@ -25,6 +25,15 @@ struct Message {
     line: Option<usize>,
 }
 
+/// One conversation found inside an exported/decrypted JSON document. A single file may
+/// contain many conversations (e.g. a decrypted Trae data dump), so records are grouped
+/// by their session id instead of being merged into one session.
+struct ParsedSession {
+    session_id: Option<String>,
+    title: Option<String>,
+    messages: Vec<Message>,
+}
+
 /// Read manually exported Trae conversations from one folder. Trae keeps its own
 /// conversations in an encrypted database; this adapter only consumes what the user
 /// exported (Markdown/JSON/JSONL) and states its assumptions in collection warnings.
@@ -100,14 +109,22 @@ pub(crate) fn collect(
             .ok()
             .and_then(|metadata| metadata.modified().ok())
             .map(DateTime::<Utc>::from);
-        let (messages, mut session_warnings, parsed_title) =
+        let (mut parsed_sessions, mut session_warnings) =
             if extension == "json" || extension == "jsonl" {
                 parse_json(&content, &extension, timezone)
             } else {
                 let (messages, warnings) = parse_text(&content, timezone);
-                (messages, warnings, None)
+                (
+                    vec![ParsedSession {
+                        session_id: None,
+                        title: None,
+                        messages,
+                    }],
+                    warnings,
+                )
             };
-        if messages.is_empty() {
+        parsed_sessions.retain(|session| !session.messages.is_empty());
+        if parsed_sessions.is_empty() {
             unrecognized += 1;
             session_warnings.push(format!(
                 "{relative} 未识别到对话内容（{extension}），未采集"
@@ -115,59 +132,100 @@ pub(crate) fn collect(
             global_warnings.extend(session_warnings);
             continue;
         }
-        let raw_id = &crate::common::hash(&relative)[..16];
-        let session_id = format!("{TOOL}:{raw_id}");
-        let mut local = Vec::new();
+        let default_title = session_title(&content, &relative);
+        let multiple = parsed_sessions.len() > 1;
+        let session_start = sessions.len();
         let mut used_fallback_time = false;
-        for (index, message) in messages.iter().enumerate() {
-            let at = match message.at {
-                Some(value) => {
-                    if value.with_timezone(&timezone).date_naive() != target_day {
-                        continue;
-                    }
-                    value
-                }
+        let mut produced = false;
+        for (group_index, group) in parsed_sessions.iter().enumerate() {
+            let session_id = match &group.session_id {
+                Some(id) => format!(
+                    "{TOOL}:{}",
+                    &crate::common::hash(&format!("{relative}\u{1f}{id}"))[..16]
+                ),
                 None => {
-                    if file_day != target_day {
-                        continue;
-                    }
-                    used_fallback_time = true;
-                    fallback_instant(file_day, modified, timezone)
+                    let seed = if multiple {
+                        format!("{relative}\u{1f}{group_index}")
+                    } else {
+                        relative.clone()
+                    };
+                    format!("{TOOL}:{}", &crate::common::hash(&seed)[..16])
                 }
             };
-            if at > cutoff {
+            let mut local = Vec::new();
+            for (index, message) in group.messages.iter().enumerate() {
+                let at = match message.at {
+                    Some(value) => {
+                        if value.with_timezone(&timezone).date_naive() != target_day {
+                            continue;
+                        }
+                        value
+                    }
+                    None => {
+                        if file_day != target_day {
+                            continue;
+                        }
+                        used_fallback_time = true;
+                        fallback_instant(file_day, modified, timezone)
+                    }
+                };
+                if at > cutoff {
+                    continue;
+                }
+                let stamp = at
+                    .with_timezone(&timezone)
+                    .to_rfc3339_opts(chrono::SecondsFormat::Millis, false);
+                let ordinal = message.line.unwrap_or(index + 1);
+                let evidence_id = format!(
+                    "E{}",
+                    &crate::common::hash(&format!("{session_id}:{ordinal}:{stamp}"))[..20]
+                );
+                if message.text.trim().is_empty() {
+                    continue;
+                }
+                local.push(json!({"id":evidence_id,"sessionId":session_id,"timestamp":stamp,
+                    "kind":message.role,"text":truncate(crate::common::redact(&message.text)),
+                    "source":format!("{relative}:{ordinal}"),"tool":TOOL}));
+            }
+            if local.is_empty() {
                 continue;
             }
-            let stamp = at
-                .with_timezone(&timezone)
-                .to_rfc3339_opts(chrono::SecondsFormat::Millis, false);
-            let ordinal = message.line.unwrap_or(index + 1);
-            let evidence_id = format!(
-                "E{}",
-                &crate::common::hash(&format!("{session_id}:{ordinal}:{stamp}"))[..20]
-            );
-            if message.text.trim().is_empty() {
-                continue;
-            }
-            local.push(json!({"id":evidence_id,"sessionId":session_id,"timestamp":stamp,
-                "kind":message.role,"text":truncate(crate::common::redact(&message.text)),
-                "source":format!("{relative}:{ordinal}"),"tool":TOOL}));
+            produced = true;
+            let title = group
+                .title
+                .clone()
+                .or_else(|| (!multiple).then(|| default_title.clone()))
+                .or_else(|| first_user_text(&group.messages))
+                .unwrap_or_else(|| default_title.clone());
+            let session = json!({"id":session_id,"title":title,"project":"","warnings":[],
+                "tool":TOOL,"toolLabel":LABEL_TRAE,
+                "firstAt":local.first().map(|event| event["timestamp"].clone()).unwrap_or(Value::Null),
+                "lastAt":local.last().map(|event| event["timestamp"].clone()).unwrap_or(Value::Null),
+                "eventCount":local.len()});
+            events.extend(local);
+            sessions.push(session);
         }
-        if local.is_empty() && session_warnings.is_empty() {
+        if !produced {
+            global_warnings.extend(session_warnings);
             continue;
         }
-        if used_fallback_time {
-            untimed += 1;
-            session_warnings.push(format!("说明：{relative} 部分记录没有时间戳，按文件日期计入"));
+        let file_warnings = {
+            let mut warnings = std::mem::take(&mut session_warnings);
+            if used_fallback_time {
+                untimed += 1;
+                warnings.push(format!("说明：{relative} 部分记录没有时间戳，按文件日期计入"));
+            }
+            warnings
+        };
+        if !file_warnings.is_empty() {
+            for session in sessions.iter_mut().skip(session_start) {
+                if let Some(list) = session["warnings"].as_array_mut() {
+                    for warning in &file_warnings {
+                        list.push(json!(warning));
+                    }
+                }
+            }
         }
-        let title = parsed_title.unwrap_or_else(|| session_title(&content, &relative));
-        let session = json!({"id":session_id,"title":title,"project":"","warnings":session_warnings,
-            "tool":TOOL,"toolLabel":LABEL_TRAE,
-            "firstAt":local.first().map(|event| event["timestamp"].clone()).unwrap_or(Value::Null),
-            "lastAt":local.last().map(|event| event["timestamp"].clone()).unwrap_or(Value::Null),
-            "eventCount":local.len()});
-        events.extend(local);
-        sessions.push(session);
     }
     if unrecognized > 0 {
         global_warnings.push(format!("{LABEL_TRAE}：{unrecognized} 个导出文件未识别到对话内容"));
@@ -448,94 +506,78 @@ fn is_metadata_line(line: &str) -> bool {
     META.is_match(line)
 }
 
-fn parse_json(
-    content: &str,
-    extension: &str,
-    timezone: Tz,
-) -> (Vec<Message>, Vec<String>, Option<String>) {
-    let mut warnings = Vec::new();
-    let mut title = None;
-    if extension == "jsonl" {
-        let mut messages = Vec::new();
-        for (index, line) in content.lines().enumerate() {
-            if line.trim().is_empty() {
-                continue;
-            }
-            match serde_json::from_str::<Value>(line) {
-                Ok(value) => collect_messages(
-                    &value,
-                    &mut messages,
-                    &mut warnings,
-                    &mut title,
-                    timezone,
-                    None,
-                    Some(index + 1),
-                ),
-                Err(_) => warnings.push(format!("第 {} 行不是有效 JSON，已跳过", index + 1)),
-            }
-        }
-        return (messages, warnings, title);
-    }
-    match serde_json::from_str::<Value>(content) {
-        Ok(value) => {
-            let mut messages = Vec::new();
-            collect_messages(
-                &value,
-                &mut messages,
-                &mut warnings,
-                &mut title,
-                timezone,
-                None,
-                None,
-            );
-            (messages, warnings, title)
-        }
-        Err(_) => {
-            // Some exports use a .json name but write one JSON object per line.
-            let mut messages = Vec::new();
-            for (index, line) in content.lines().enumerate() {
-                if line.trim().is_empty() {
-                    continue;
-                }
-                if let Ok(value) = serde_json::from_str::<Value>(line) {
-                    collect_messages(
-                        &value,
-                        &mut messages,
-                        &mut warnings,
-                        &mut title,
-                        timezone,
-                        None,
-                        Some(index + 1),
-                    );
-                }
-            }
-            if messages.is_empty() {
-                warnings.push("文件不是有效 JSON 或 JSONL，未采集".to_owned());
-            }
-            (messages, warnings, title)
-        }
-    }
-}
 
 /// Timestamp keys used by Trae message rows and by wrapper records such as `history_v2`.
 const TIMESTAMP_KEYS: [&str; 10] = [
     "timestamp", "time", "createdAt", "created_at", "date", "sendTime", "send_time", "ts",
     "pubTime", "create_time",
 ];
-const TITLE_KEYS: [&str; 5] = [
-    "session_title", "sessionTitle", "conversation_title", "conversationTitle", "title",
+const TITLE_KEYS: [&str; 4] = ["session_title", "sessionTitle", "title", "conversation_title"];
+const SESSION_ID_KEYS: [&str; 6] = [
+    "session_id", "sessionId", "conversation_id", "conversationId", "chat_id", "chatId",
 ];
-const MESSAGE_CONTAINER_KEYS: [&str; 22] = [
+/// Keys that directly hold a conversation's message array.
+const MESSAGE_ARRAY_KEYS: [&str; 5] = [
+    "messages", "raw_messages", "rawMessages", "chat_messages", "chatMessages",
+];
+/// Keys that may contain nested conversations or message containers.
+const CONTAINER_KEYS: [&str; 24] = [
     "messages", "raw_messages", "rawMessages", "conversation", "conversations", "chat", "chats",
     "history", "history_v2", "historyV2", "chat_messages", "chatMessages", "records", "items",
-    "turns", "data", "log", "logs", "content", "children", "sessions", "session",
+    "turns", "data", "log", "logs", "content", "children", "sessions", "session", "list",
+    "conversation_list",
 ];
 
-fn collect_messages(
+fn parse_json(
+    content: &str,
+    extension: &str,
+    timezone: Tz,
+) -> (Vec<ParsedSession>, Vec<String>) {
+    let mut warnings = Vec::new();
+    let mut sessions = Vec::new();
+    if extension == "jsonl" {
+        for (index, line) in content.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<Value>(line) {
+                Ok(value) => {
+                    collect_sessions(&value, &mut sessions, timezone, None, Some(index + 1))
+                }
+                Err(_) => warnings.push(format!("第 {} 行不是有效 JSON，已跳过", index + 1)),
+            }
+        }
+        return (sessions, warnings);
+    }
+    match serde_json::from_str::<Value>(content) {
+        Ok(value) => {
+            collect_sessions(&value, &mut sessions, timezone, None, None);
+            (sessions, warnings)
+        }
+        Err(_) => {
+            // Some exports use a .json name but write one JSON object per line.
+            for (index, line) in content.lines().enumerate() {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                if let Ok(value) = serde_json::from_str::<Value>(line) {
+                    collect_sessions(&value, &mut sessions, timezone, None, Some(index + 1));
+                }
+            }
+            if sessions.is_empty() {
+                warnings.push("文件不是有效 JSON 或 JSONL，未采集".to_owned());
+            }
+            (sessions, warnings)
+        }
+    }
+}
+
+/// Walk an exported JSON document and split it into conversations. Objects that contain
+/// messages (directly or through a nested wrapper) start a conversation; consumer
+/// containers such as `list`/`sessions` are traversed without merging their children.
+fn collect_sessions(
     value: &Value,
-    messages: &mut Vec<Message>,
-    warnings: &mut Vec<String>,
-    title: &mut Option<String>,
+    sessions: &mut Vec<ParsedSession>,
     timezone: Tz,
     inherited: Option<DateTime<Utc>>,
     line: Option<usize>,
@@ -543,48 +585,185 @@ fn collect_messages(
     match value {
         Value::Array(items) => {
             for item in items {
-                collect_messages(item, messages, warnings, title, timezone, inherited, line);
+                let is_message = item
+                    .as_object()
+                    .is_some_and(|object| message_from_object(object, timezone, line).is_some());
+                if is_message {
+                    attach_message(item, sessions, timezone, inherited, line);
+                    continue;
+                }
+                collect_sessions(item, sessions, timezone, inherited, line);
             }
         }
         Value::Object(object) => {
-            if let Some(mut message) = message_from_object(object, timezone, line) {
-                // A record without its own timestamp inherits the timestamp of the
-                // session/export wrapper it came from (e.g. Trae `history_v2.created_at`).
-                message.at = message.at.or(inherited);
-                messages.push(message);
+            if message_from_object(object, timezone, line).is_some() {
+                attach_message(value, sessions, timezone, inherited, line);
                 return;
             }
-            if title.is_none() {
-                if let Some(value) = TITLE_KEYS
+            let direct = MESSAGE_ARRAY_KEYS.iter().find_map(|key| object.get(*key));
+            let has_metadata = SESSION_ID_KEYS
+                .iter()
+                .any(|key| non_empty_str(object.get(*key)).is_some())
+                || TITLE_KEYS
                     .iter()
-                    .find_map(|key| object.get(*key).and_then(Value::as_str))
-                {
-                    let clean = value.trim();
-                    if !clean.is_empty() {
-                        *title =
-                            Some(crate::common::redact(clean).chars().take(100).collect());
-                    }
+                    .any(|key| non_empty_str(object.get(*key)).is_some());
+            if (direct.is_some() || has_metadata) && contains_message(value, 0) {
+                let mut session = ParsedSession {
+                    session_id: session_key(object),
+                    title: session_title_value(object),
+                    messages: Vec::new(),
+                };
+                let wrapper_at = object_timestamp(object, timezone).or(inherited);
+                collect_conversation(value, &mut session, timezone, wrapper_at, line);
+                if !session.messages.is_empty() {
+                    sessions.push(session);
                 }
+                return;
             }
             let next_inherited = object_timestamp(object, timezone).or(inherited);
-            for key in MESSAGE_CONTAINER_KEYS {
+            for key in CONTAINER_KEYS {
                 if let Some(child) = object.get(key) {
                     if child.is_array() || child.is_object() {
-                        collect_messages(
-                            child,
-                            messages,
-                            warnings,
-                            title,
-                            timezone,
-                            next_inherited,
-                            line,
-                        );
+                        collect_sessions(child, sessions, timezone, next_inherited, line);
                     }
                 }
             }
         }
         _ => {}
     }
+}
+
+/// Collect messages inside one conversation without starting new conversations.
+fn collect_conversation(
+    value: &Value,
+    session: &mut ParsedSession,
+    timezone: Tz,
+    inherited: Option<DateTime<Utc>>,
+    line: Option<usize>,
+) {
+    match value {
+        Value::Array(items) => {
+            for item in items {
+                collect_conversation(item, session, timezone, inherited, line);
+            }
+        }
+        Value::Object(object) => {
+            if let Some(mut message) = message_from_object(object, timezone, line) {
+                // A message without its own timestamp inherits the timestamp of the
+                // session/export wrapper it came from (e.g. `history_v2.created_at`).
+                message.at = message.at.or(inherited);
+                if !message.text.trim().is_empty() {
+                    session.messages.push(message);
+                }
+                return;
+            }
+            let next = object_timestamp(object, timezone).or(inherited);
+            for key in CONTAINER_KEYS {
+                if let Some(child) = object.get(key) {
+                    if child.is_array() || child.is_object() {
+                        collect_conversation(child, session, timezone, next, line);
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Bare message records (e.g. JSONL message rows without session metadata) are appended
+/// to the current conversation; a new implicit conversation starts when needed.
+fn attach_message(
+    value: &Value,
+    sessions: &mut Vec<ParsedSession>,
+    timezone: Tz,
+    inherited: Option<DateTime<Utc>>,
+    line: Option<usize>,
+) {
+    let Some(object) = value.as_object() else {
+        return;
+    };
+    let Some(mut message) = message_from_object(object, timezone, line) else {
+        return;
+    };
+    message.at = message.at.or(inherited);
+    if message.text.trim().is_empty() {
+        return;
+    }
+    if sessions.is_empty() {
+        sessions.push(ParsedSession {
+            session_id: None,
+            title: None,
+            messages: Vec::new(),
+        });
+    }
+    sessions
+        .last_mut()
+        .expect("session exists")
+        .messages
+        .push(message);
+}
+
+fn non_empty_str(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+}
+
+fn session_key(object: &serde_json::Map<String, Value>) -> Option<String> {
+    SESSION_ID_KEYS
+        .iter()
+        .find_map(|key| non_empty_str(object.get(*key)))
+        .map(str::to_owned)
+}
+
+fn session_title_value(object: &serde_json::Map<String, Value>) -> Option<String> {
+    TITLE_KEYS
+        .iter()
+        .find_map(|key| non_empty_str(object.get(*key)))
+        .map(|title| {
+            crate::common::redact(title)
+                .chars()
+                .take(100)
+                .collect::<String>()
+        })
+}
+
+/// Bounded recursive check that a wrapper actually contains visible messages.
+fn contains_message(value: &Value, depth: usize) -> bool {
+    if depth > 12 {
+        return false;
+    }
+    match value {
+        Value::Object(object) => {
+            if object
+                .get("role")
+                .and_then(Value::as_str)
+                .is_some_and(|role| role_kind_loose(role).is_some())
+            {
+                return true;
+            }
+            CONTAINER_KEYS.iter().any(|key| {
+                object
+                    .get(*key)
+                    .is_some_and(|child| contains_message(child, depth + 1))
+            })
+        }
+        Value::Array(items) => items.iter().any(|item| contains_message(item, depth + 1)),
+        _ => false,
+    }
+}
+
+fn first_user_text(messages: &[Message]) -> Option<String> {
+    messages
+        .iter()
+        .find(|message| message.role == "user" && !message.text.trim().is_empty())
+        .map(|message| {
+            crate::common::redact(message.text.trim())
+                .chars()
+                .take(100)
+                .collect()
+        })
 }
 
 fn object_timestamp(
@@ -893,5 +1072,108 @@ mod tests {
             .iter()
             .all(|event| event["timestamp"].as_str().unwrap().starts_with(&day)));
         assert_eq!(result.sessions[0]["title"], "记录一");
+    }
+
+    #[test]
+    fn trae_json_dump_keeps_multiple_sessions_separate() {
+        let fixture = Fixture::new("multi-session");
+        let day = fixture.day();
+        let now = chrono::Utc::now().timestamp_millis();
+        // Shape of a decrypted Trae data dump: one file, many session records.
+        let dump = json!({"conversations": [
+            {"session_id": "s-alpha", "session_title": "会话 Alpha", "created_at": now - 120_000,
+             "messages": {"raw_messages": [
+                {"role": "user", "content": [{"type": "text", "text": "ALPHA_USER 第一个会话"}]},
+                {"role": "assistant", "content": [{"type": "text", "text": "ALPHA_ASSISTANT 已完成"}]}
+             ]}},
+            {"session_id": "s-beta", "session_title": "会话 Beta", "created_at": now - 60_000,
+             "messages": {"raw_messages": [
+                {"role": "user", "content": [{"type": "text", "text": "BETA_USER 第二个会话"}]},
+                {"role": "assistant", "content": [{"type": "text", "text": "BETA_ASSISTANT 已完成"}]}
+             ]}}
+        ]});
+        fixture.write(&format!("{day}-dump.json"), &dump.to_string());
+        let result = fixture.collect();
+        let capture = &result.capture;
+        assert_eq!(result.sessions.len(), 2, "sessions: {:?}", result.sessions);
+        let titles = result
+            .sessions
+            .iter()
+            .filter_map(|session| session["title"].as_str())
+            .collect::<Vec<_>>();
+        assert!(titles.contains(&"会话 Alpha") && titles.contains(&"会话 Beta"), "{titles:?}");
+        let events = capture["events"].as_array().unwrap();
+        assert_eq!(events.len(), 4, "events: {events:?}");
+        let session_ids = events
+            .iter()
+            .map(|event| event["sessionId"].as_str().unwrap().to_owned())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(session_ids.len(), 2);
+        assert_ne!(result.sessions[0]["id"], result.sessions[1]["id"]);
+        assert_eq!(result.sessions[0]["eventCount"], 2);
+        assert_eq!(result.sessions[1]["eventCount"], 2);
+    }
+
+    #[test]
+    fn trae_jsonl_records_with_session_ids_are_grouped() {
+        let fixture = Fixture::new("jsonl-records");
+        let day = fixture.day();
+        let now = chrono::Utc::now().timestamp_millis();
+        let rows = [
+            json!({"session_id":"j-one","title":"JSONL 会话一","created_at":now-30_000,"messages":[
+                {"role":"user","content":"JSONL_ONE_USER 内容","timestamp":now-29_000},
+                {"role":"assistant","content":"JSONL_ONE_ASSISTANT 回复","timestamp":now-28_000}
+            ]}),
+            json!({"session_id":"j-two","title":"JSONL 会话二","created_at":now-10_000,"messages":[
+                {"role":"user","content":"JSONL_TWO_USER 内容","timestamp":now-9_000},
+                {"role":"assistant","content":"JSONL_TWO_ASSISTANT 回复","timestamp":now-8_000}
+            ]}),
+        ];
+        fixture.write(
+            &format!("{day}-records.jsonl"),
+            &rows.iter().map(Value::to_string).collect::<Vec<_>>().join("\n"),
+        );
+        let result = fixture.collect();
+        assert_eq!(result.sessions.len(), 2, "sessions: {:?}", result.sessions);
+        let capture = &result.capture;
+        assert_eq!(capture["events"].as_array().unwrap().len(), 4);
+        let titles = result
+            .sessions
+            .iter()
+            .filter_map(|session| session["title"].as_str())
+            .collect::<Vec<_>>();
+        assert!(titles.contains(&"JSONL 会话一") && titles.contains(&"JSONL 会话二"), "{titles:?}");
+    }
+
+    #[test]
+    fn trae_plain_list_of_sessions_is_split_by_title() {
+        let fixture = Fixture::new("plain-list");
+        let day = fixture.day();
+        let now = chrono::Utc::now().timestamp_millis();
+        // International-style `{list:[...]}` without session ids: each titled record is
+        // still a separate session and messages inherit the record timestamp.
+        fixture.write(
+            &format!("{day}-list.json"),
+            &serde_json::to_string(&json!({"list": [
+                {"title": "列表会话一", "timestamp": now - 40_000, "messages": [
+                    {"role": "user", "text": "LIST_ONE_USER 内容"},
+                    {"role": "assistant", "text": "LIST_ONE_ASSISTANT 回复"}
+                ]},
+                {"title": "列表会话二", "timestamp": now - 20_000, "messages": [
+                    {"role": "user", "text": "LIST_TWO_USER 内容"},
+                    {"role": "assistant", "text": "LIST_TWO_ASSISTANT 回复"}
+                ]}
+            ]})).unwrap(),
+        );
+        let result = fixture.collect();
+        assert_eq!(result.sessions.len(), 2, "sessions: {:?}", result.sessions);
+        assert_eq!(result.capture["events"].as_array().unwrap().len(), 4);
+        let titles = result
+            .sessions
+            .iter()
+            .filter_map(|session| session["title"].as_str())
+            .collect::<Vec<_>>();
+        assert!(titles.contains(&"列表会话一") && titles.contains(&"列表会话二"), "{titles:?}");
+        assert_ne!(result.sessions[0]["id"], result.sessions[1]["id"]);
     }
 }

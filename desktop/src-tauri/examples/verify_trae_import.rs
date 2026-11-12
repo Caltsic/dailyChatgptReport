@@ -32,6 +32,22 @@ fn trae_fixture(root: &Path, day: &str) -> Result<()> {
             "# Trae 导出会话\n导出时间：{day} 20:00:00\n## 用户\nTRAE_USER_VISIBLE 帮我排查接口超时\n## 助手\nTRAE_ASSISTANT_VISIBLE 已定位下游等待\n## 系统\nTRAE_SYSTEM_MUST_NOT_APPEAR\n"
         ),
     )?;
+    // A decrypted/data-dump style JSON file with two conversations: the importer must keep
+    // them as separate sessions instead of merging them into one.
+    let now = chrono::Utc::now().timestamp_millis();
+    let dump = json!({"conversations":[
+        {"session_id":"dump-one","session_title":"导出会话一","created_at":now-90_000,
+         "messages":{"raw_messages":[
+            {"role":"user","content":[{"type":"text","text":"TRAE_DUMP_ONE_USER 第一个会话"}]},
+            {"role":"assistant","content":[{"type":"text","text":"TRAE_DUMP_ONE_ASSISTANT 已完成"}]}
+         ]}},
+        {"session_id":"dump-two","session_title":"导出会话二","created_at":now-30_000,
+         "messages":{"raw_messages":[
+            {"role":"user","content":[{"type":"text","text":"TRAE_DUMP_TWO_USER 第二个会话"}]},
+            {"role":"assistant","content":[{"type":"text","text":"TRAE_DUMP_TWO_ASSISTANT 已完成"}]}
+         ]}}
+    ]});
+    fs::write(root.join(format!("{day}-Trae 数据导出.json")), dump.to_string())?;
     Ok(())
 }
 
@@ -100,10 +116,24 @@ async fn main() -> Result<()> {
 
     let draft = member.dispatch("member.collect", json!({"day":day})).await?;
     let sessions = draft["sessions"].as_array().context("Missing sessions")?;
-    ensure!(sessions.len() == 3, "Expected Codex + Trae export + Trae local sessions: {sessions:?}");
-    let trae_session = sessions.iter().find(|session| session["tool"] == "trae").context("Missing Trae session")?;
+    ensure!(sessions.len() == 5, "Expected Codex + 3 Trae export + Trae local sessions: {sessions:?}");
+    let trae_session = sessions.iter().find(|session| session["tool"] == "trae" && session["title"] == "Trae 导出会话")
+        .context("Missing Trae export session")?;
     ensure!(trae_session["title"] == "Trae 导出会话", "Trae title wrong: {trae_session}");
     ensure!(trae_session["eventCount"] == 2, "Trae event count wrong: {trae_session}");
+    let dump_sessions = sessions.iter()
+        .filter(|session| session["tool"] == "trae" && session["title"] != "Trae 导出会话")
+        .collect::<Vec<_>>();
+    ensure!(dump_sessions.len() == 2, "JSON dump should split into two sessions: {dump_sessions:?}");
+    ensure!(dump_sessions[0]["id"] != dump_sessions[1]["id"], "JSON dump sessions share an id");
+    for title in ["导出会话一", "导出会话二"] {
+        ensure!(dump_sessions.iter().any(|session| session["title"] == title),
+            "JSON dump session missing title {title}: {dump_sessions:?}");
+    }
+    let dump_preview = member.dispatch("member.previewSession",
+        json!({"draftId":draft["draftId"],"sessionId":dump_sessions[0]["id"]})).await?;
+    ensure!(dump_preview.to_string().contains("TRAE_DUMP_"),
+        "JSON dump content missing in preview");
     let preview = member.dispatch("member.previewSession",
         json!({"draftId":draft["draftId"],"sessionId":trae_session["id"]})).await?;
     let preview_text = preview.to_string();
@@ -125,13 +155,13 @@ async fn main() -> Result<()> {
     let submitted = member.dispatch("member.submit",
         json!({"draftId":draft["draftId"],"sessionIds":selected})).await?;
     ensure!(submitted["received"] == true, "Leader did not receive Trae import: {submitted}");
-    ensure!(submitted["sessionCount"] == 3 && submitted["eventCount"] == 6, "Submitted counts wrong: {submitted}");
+    ensure!(submitted["sessionCount"] == 5 && submitted["eventCount"] == 10, "Submitted counts wrong: {submitted}");
 
     let uploaded = capture(&leader, &day, 1)?;
     ensure!(uploaded["protocol"] == 1, "Protocol changed");
-    ensure!(uploaded["sessionCount"] == 3, "Snapshot session count wrong");
+    ensure!(uploaded["sessionCount"] == 5, "Snapshot session count wrong");
     let events = uploaded["events"].as_array().context("Missing events")?;
-    ensure!(events.len() == 6, "Snapshot event count wrong: {}", events.len());
+    ensure!(events.len() == 10, "Snapshot event count wrong: {}", events.len());
     ensure!(events.iter().any(|event| event["tool"] == "trae" && event["kind"] == "user"),
         "Snapshot missing Trae user event");
     ensure!(events.iter().any(|event| event["tool"] == "traeLocal" && event["kind"] == "assistant"),
@@ -151,7 +181,7 @@ async fn main() -> Result<()> {
         "verified":["Trae export folder enabled as a source","Trae international local workspace source enabled",
             "Markdown export parsed into user/assistant events","plaintext state.vscdb parsed into user/assistant events",
             "system section and export metadata excluded","actual HTTPS upload accepted by Leader validation",
-            "Codex, Trae export and Trae local sessions collected together in one snapshot"],"modelCalled":false});
+            "Codex, Trae export Markdown/JSON-dump and Trae local sessions collected together in one snapshot"],"modelCalled":false});
     common::atomic_text(&base.join("latest-result.json"), &serde_json::to_string_pretty(&result)?)?;
     println!("Trae export import workflow passed: {}", base.display());
     Ok(())
