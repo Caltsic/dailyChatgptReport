@@ -1,3 +1,9 @@
+## 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
+
+- 用户工作区 24.04 无 sudo/WebKitGTK，改用本机 WSL2 导入独立 Ubuntu 24.04.5 cloud-image 发行版（F:\WSL\Ubuntu2404，非 22.04 构建环境），WSLg 1.0.71（Wayland + XWayland）。
+- 交付的 0.7.0 deb 用 apt 安装成功（自动补 WebKitGTK 4.1 2.52.6、AppIndicator、Noto CJK）；XWayland 下渲染 “Codex 工作日报 · 成员端” 1120x820 窗口，截图为真实界面；数据 0700、无启动错误；DBus 会话内单实例生效；Wayland 后端也能启动（WSLg 不支持 wlr-screencopy 故无 Wayland 截图）；Xvfb 复现截图。
+- 证据 `artifacts/acceptance/ubuntu-2404-gui`。边界：非物理显示器/GNOME 面板，托盘图标未展示；HiDPI/多显示器/硬件 GPU 未验证。无代码改动，仅验证与文档。
+
 ## 0.7.0 Trae 本地明文记录来源
 
 - 依据 0.6.2 调研：国际版 Trae 明文 `state.vscdb` 可自动读取。新增 `collector/trae_local.rs`：递归扫描 `%APPDATA%\Trae\User\workspaceStorage`（Linux 为 `$XDG_CONFIG_HOME/Trae/User/workspaceStorage`）下的 `state.vscdb`；复制库与 `-wal`/`-shm` 到临时目录后只读打开，规避 WAL 一致性；读取 `ItemTable` 中聊天存储键（`memento/icube-ai-agent-storage`、`icube-ai-*chat-storage*`、`chat.ChatSessionStore.index`），只解析含 `messages` 的会话，取 user/assistant 可见 `content`/`parsedQuery` 文本，目标日逐条过滤，无时间戳按文件日期计入并给 `说明：` 提示；加密/损坏库跳过并提示改用导出导入；文件数上限 200、单库上限 200MB、mtime 预筛。

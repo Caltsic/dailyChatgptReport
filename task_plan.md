@@ -1,3 +1,11 @@
+# 0.7.0 附：Ubuntu 24.04 桌面窗口
+
+- [x] 本机 WSL2 导入独立 Ubuntu 24.04.5 发行版（cloud-image rootfs），WSLg 1.0.71。
+- [x] 交付 deb 用 apt 安装，XWayland 下渲染成员窗口并截图（`artifacts/acceptance/ubuntu-2404-gui`），数据 0700、无启动错误、单实例生效、Wayland 后端可启动、Xvfb 复现。
+- [x] VALIDATION/README/progress 更新。
+- [ ] 物理 Ubuntu 桌面/GNOME 面板、HiDPI、多显示器、硬件 GPU、真实 Wayland 会话截图仍待验证。
+- [ ] Trae 真实安装与样本仍待用户机器。
+
 # 0.7.0 Trae 本地明文记录
 
 在 0.6.2 调研基础上，实现国际版 Trae 明文工作区记录的自动采集（不依赖样本，但需真实机器复验）。

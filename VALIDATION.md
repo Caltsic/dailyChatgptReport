@@ -1,3 +1,17 @@
+# 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
+
+日期：2026-11-12。用户提供的工作区 (Ubuntu 24.04.4) 无 sudo/WebKitGTK，无法运行窗口；本轮在本机 WSL2 中导入独立的 **Ubuntu 24.04.5** 发行版（cloud-image rootfs，非 WSL2 22.04），在 WSLg 1.0.71（Wayland 合成器 + XWayland）下验证交付的 0.7.0 `.deb` 与桌面窗口。
+
+本轮验证路径：
+
+- 环境：Ubuntu 24.04.5 LTS，内核 6.6.87.2-microsoft-standard-WSL2，WSLg 1.0.71，`DISPLAY=:0`、`WAYLAND_DISPLAY=wayland-0`、Wayland 输出 `rdp-0 2560x1440`。
+- 安装：把构建的 `CodexDailyReport.Member-0.7.0.deb` 用 `apt install` 装入该发行版（自动补齐 `libwebkit2gtk-4.1-0 2.52.6`、`libayatana-appindicator3-1`、`fonts-noto-cjk` 等依赖），`dpkg -s` 显示 `Version: 0.7.0`，desktop 入口 `Categories=Office`。
+- 窗口：在 `dbus-run-session` 下以 X11 后端启动，XWayland 树中出现标题为 `Codex 工作日报 · 成员端`、1120x820 的窗口，另有 `CodexDailyReport.Member` 托盘窗口；截图 `artifacts/acceptance/ubuntu-2404-gui/member-window-ubuntu2404.png`（渲染正常，界面为 0.7.0 成员工作台）。数据目录权限 0700，无 `startup-error.txt`，托盘构建未失败。
+- 单实例：同一 DBus 会话内第二次启动的进程退出、主进程仍为 1、窗口数仍为 1（`tauri-plugin-single-instance` 生效）。
+- 兼容：Wayland 后端（`GDK_BACKEND=wayland`）也能启动并保持运行；WSLg 合成器不支持 `wlr-screencopy`，无法用 grim 拍 Wayland 截图，因此窗口像素证据取自 X11 后端；另用 Xvfb 在 24.04 用户态复现 X11 截图（`member-xvfb-ubuntu2404.png`）。
+- 日志：`artifacts/acceptance/ubuntu-2404-gui/`（`gui-run.log`、`gui-shot-run.log`、`gui-*.log`、`run.log`、`inner-gui.sh`）。
+- 边界：WSLg 不是物理显示器，也没有 GNOME Shell 面板，托盘图标对象创建成功但未在面板中展示；HiDPI/多显示器、真实硬件 GPU 与物理 Ubuntu 桌面仍未验证。未调用模型、未修改生产数据。
+
 # 0.7.0 Trae 本地明文记录
 
 日期：2026-11-12。基于 0.6.2 的公开资料调研实现“Trae 本地记录”来源（国际版明文 `state.vscdb`）；Trae CN 加密库仍只支持导出导入。本环境无真实 Trae 安装，本轮用合成库验证解析与集成，不声称已对真实 Trae 生效。
