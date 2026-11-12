@@ -1,5 +1,27 @@
 # 变更记录
 
+## [0.7.0] - 2026-11-12
+
+### 新增
+
+- 成员端新增“Trae 本地记录”来源：自动读取**国际版** Trae 明文工作区 `state.vscdb`（`%APPDATA%\Trae\User\workspaceStorage`），解析 `ItemTable` 中聊天存储键（`memento/icube-ai-agent-storage` 等）的会话与可见消息，按目标日过滤；先复制数据库与 `-wal`/`-shm` 到临时目录再只读打开，避免 Trae 运行时的 WAL 一致性问题。检测到目录时默认启用，可在“记录来源”关闭。
+- Trae 导出导入继续覆盖 Trae CN 与无本地明文的场景（Markdown/TXT/JSON/JSONL，含 `raw_messages` 等包装结构）。
+
+### 变更
+
+- 记录来源固定为四项：Codex、DeepSeek Harness、Trae 本地记录、Trae 导出；`sources.json` 自动补齐新条目。Trae 本地解析只取用户/助手可见文本，不读取 agent 工具明细或内部思考；Trae CN 加密库仍不读取、不做进程内存扫描。
+
+### 验证
+
+- 成员端 22 项库回归通过（新增 5 项 Trae 本地记录：明文读取、跨日过滤、加密库提示、坏载荷、凭据脱敏），组长端 25 项、无桌面核心 22 项通过。
+- 隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源：3 会话、6 事件，预览仅含可见内容，组长端按生产规则校验通过，快照来源含 codex/trae/traeLocal 三类。
+- 探针合成目录自测、既有 `verify_multi_source`/`verify_selection` 回归、前端 TypeScript 构建通过。
+- Windows 双端与 Ubuntu 成员端 0.7.0 安装包重建（校验值见 VALIDATION）。
+
+### 边界
+
+- 本环境没有真实 Trae 安装，本地读取规则来自公开工具的数据结构（明文 `state.vscdb`、`ItemTable` 聊天键、`messages` 列表），需在装有国际版 Trae 的电脑上复验；Trae CN 仍只支持官方导出导入。
+
 ## [0.6.2] - 2026-11-12
 
 ### 新增

@@ -1,3 +1,15 @@
+# 0.7.0 Trae 本地明文记录
+
+日期：2026-11-12。基于 0.6.2 的公开资料调研实现“Trae 本地记录”来源（国际版明文 `state.vscdb`）；Trae CN 加密库仍只支持导出导入。本环境无真实 Trae 安装，本轮用合成库验证解析与集成，不声称已对真实 Trae 生效。
+
+本轮验证路径：
+
+- 解析与容错回归（成员端 22 项、无桌面核心 22 项、组长端 25 项）：新增 5 项 Trae 本地记录用例——明文 `state.vscdb`（`ItemTable` + `memento/icube-ai-agent-storage`）读取用户/助手可见消息、跨日消息过滤、加密/非 SQLite 库跳过并提示改用导出导入、无效聊天载荷忽略、可见文本凭据脱敏；原有 Codex/DSH/Trae 导出/截断/提示分类用例保持通过。
+- 隔离 HTTPS 验收 `verify_trae_import` 扩展为三来源：Codex + Trae 导出 Markdown + Trae 本地记录（合成明文库），采集 3 会话、6 事件；两个 Trae 会话预览只含可见内容；选择上传后组长端 `validate_capture` 通过，快照包含 codex/trae/traeLocal 三类来源。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 既有验收回归：`verify_multi_source`、`verify_selection` 通过；前端 TypeScript 构建通过；探针合成目录自测（0.6.2 证据）保持有效。
+- 交付物 0.7.0（本机重建，不进入源码仓库）：Windows 成员端安装包 2,414,899 字节（SHA-256 `BA1CB6A701FE680408C6F2022F4D3B72D40E778ADC350B5BCE7DDED411FD0DA9`），组长端 27,919,814 字节（`FAFDA1DC83270E728F75BE35177DC3C999A80408CFD730BABCF40EA9218D324A`），Ubuntu 成员端 deb 3,989,814 字节（`769C9E712EDF01DE299BAF1D467BB28B875F1EA016D775256FCCF4D16FE6061A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：本环境没有真实 Trae 安装或真实 `state.vscdb`，解析规则来自公开工具（明文工作区、`ItemTable` 聊天键、`messages` 列表），需在装有国际版 Trae 的电脑上复验后才算真实生效；Trae CN 加密库不读取、不扫描内存；Trae 导出仍缺真实样本。未调用模型。
+
 # 0.6.2 Trae 导出解析增强与探针更新
 
 日期：2026-11-12。用户表示 Trae 真实样本稍后提供，本轮用公开资料补齐不依赖样本的部分。成员端仍不读取 Trae CN 本地加密库，也不做进程内存扫描。

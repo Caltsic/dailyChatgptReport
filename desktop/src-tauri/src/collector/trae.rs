@@ -716,6 +716,7 @@ mod tests {
                     codex: None,
                     dsh: None,
                     trae: Some(self.root.clone()),
+                    trae_local: None,
                 },
                 &self.day(),
                 "Asia/Shanghai",

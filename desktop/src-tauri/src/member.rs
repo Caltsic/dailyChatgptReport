@@ -180,9 +180,10 @@ struct OutboxItem {
 }
 
 /// Tools whose local records can be collected, in the order shown to members.
-const SOURCE_TOOLS: [(&str, &str); 3] = [
+const SOURCE_TOOLS: [(&str, &str); 4] = [
     ("codex", collector::LABEL_CODEX),
     ("dsh", collector::LABEL_DSH),
+    ("traeLocal", collector::LABEL_TRAE_LOCAL),
     ("trae", collector::LABEL_TRAE),
 ];
 
@@ -285,12 +286,22 @@ impl MemberClient {
                 }
             }
             "trae" => SourceConfig {
-                // Trae keeps conversations in an encrypted database; the member picks a
-                // folder containing conversations exported from Trae instead.
+                // Trae CSV/CN keeps conversations in an encrypted database; the member picks
+                // a folder containing conversations exported from Trae instead.
                 tool: tool.to_owned(),
                 enabled: false,
                 path: String::new(),
             },
+            "traeLocal" => {
+                // International Trae builds keep plaintext workspace state; read it when the
+                // default workspace storage exists, otherwise stay disabled.
+                let effective = collector::trae_local::default_root();
+                SourceConfig {
+                    tool: tool.to_owned(),
+                    enabled: effective.is_dir(),
+                    path: String::new(),
+                }
+            }
             _ => {
                 let effective = collector::default_dsh_root();
                 SourceConfig {
@@ -307,6 +318,7 @@ impl MemberClient {
             match config.tool.as_str() {
                 "codex" => collector::default_root(),
                 "trae" => PathBuf::new(),
+                "traeLocal" => collector::trae_local::default_root(),
                 _ => collector::default_dsh_root(),
             }
         } else {
@@ -359,6 +371,7 @@ impl MemberClient {
                 "codex" => roots.codex = Some(path),
                 "dsh" => roots.dsh = Some(path),
                 "trae" => roots.trae = Some(path),
+                "traeLocal" => roots.trae_local = Some(path),
                 _ => {}
             }
         }

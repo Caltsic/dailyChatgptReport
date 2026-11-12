@@ -8,11 +8,13 @@ use std::path::PathBuf;
 pub mod codex;
 pub mod dsh;
 pub mod trae;
+pub mod trae_local;
 
 /// Labels shown in the member UI and used as collection warning prefixes.
 pub(crate) const LABEL_CODEX: &str = "Codex";
 pub(crate) const LABEL_DSH: &str = "DeepSeek Harness";
 pub(crate) const LABEL_TRAE: &str = "Trae 导出";
+pub(crate) const LABEL_TRAE_LOCAL: &str = "Trae 本地记录";
 
 /// A single visible record above this many characters is cut before upload. The cut
 /// stays visible in the text and the member scope note mentions the limit, so reports
@@ -29,6 +31,8 @@ pub struct SourceRoots {
     pub dsh: Option<PathBuf>,
     /// Folder containing conversations exported manually from the Trae IDE.
     pub trae: Option<PathBuf>,
+    /// International Trae workspace state folder (`...\Trae\User\workspaceStorage`).
+    pub trae_local: Option<PathBuf>,
 }
 
 pub struct SelectionCapture {
@@ -133,6 +137,13 @@ pub fn collect_for_selection(roots: &SourceRoots, day: &str, zone: &str) -> anyh
             "trae",
             LABEL_TRAE,
             trae::collect(root, target_day, timezone, cutoff)?,
+        ));
+    }
+    if let Some(root) = &roots.trae_local {
+        captured.push((
+            "traeLocal",
+            LABEL_TRAE_LOCAL,
+            trae_local::collect(root, target_day, timezone, cutoff)?,
         ));
     }
     let mut sessions = Vec::new();

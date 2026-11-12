@@ -1,3 +1,10 @@
+## 0.7.0 Trae 本地明文记录来源
+
+- 依据 0.6.2 调研：国际版 Trae 明文 `state.vscdb` 可自动读取。新增 `collector/trae_local.rs`：递归扫描 `%APPDATA%\Trae\User\workspaceStorage`（Linux 为 `$XDG_CONFIG_HOME/Trae/User/workspaceStorage`）下的 `state.vscdb`；复制库与 `-wal`/`-shm` 到临时目录后只读打开，规避 WAL 一致性；读取 `ItemTable` 中聊天存储键（`memento/icube-ai-agent-storage`、`icube-ai-*chat-storage*`、`chat.ChatSessionStore.index`），只解析含 `messages` 的会话，取 user/assistant 可见 `content`/`parsedQuery` 文本，目标日逐条过滤，无时间戳按文件日期计入并给 `说明：` 提示；加密/损坏库跳过并提示改用导出导入；文件数上限 200、单库上限 200MB、mtime 预筛。
+- 成员端来源扩展为四项：Codex、DeepSeek Harness、Trae 本地记录、Trae 导出；Trae 本地记录在默认目录存在时默认启用，可关闭或自定义目录。UI 文案、同意书与 SECURITY 同步。
+- 验证：成员端 22 项、无桌面核心 22 项、组长端 25 项通过（新增 5 项本地记录用例）；隔离 HTTPS `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源（3 会话/6 事件，组长端校验通过）；既有回归与前端构建通过。
+- 版本 0.7.0，双端与 deb 重建。真实 Trae 安装验证仍需在用户机器上补；Trae CN 仍走导出导入。
+
 ## 0.6.2 Trae 数据结构调研与解析增强
 
 - 通过 `git` 访问 GitHub（本机 web_fetch 受限但 git 可用），调研公开 Trae 数据工具：trae-db-decrypt、trae-history、ai-data-extraction 及官方论坛帖。

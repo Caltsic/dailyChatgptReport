@@ -4,13 +4,13 @@
 [![最新版本](https://img.shields.io/github/v/release/Caltsic/dailyChatgptReport?display_name=tag)](https://github.com/Caltsic/dailyChatgptReport/releases)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness 记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
+Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness、国际版 Trae 本地明文记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
 
 这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。成员端只读取已启用的本机来源；系统提示、内部推理和内部记录不采集，未安装的来源自动跳过。
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.6.2（2026-11-12）**。本次基于公开 Trae 工具与社区资料补齐了 Trae 导入的通用性：支持 `raw_messages`/`sessions`/`history_v2` 等包装 JSON、记录级时间继承、包装标题和推理块剔除，适合官方导出或社区工具解密后的 JSON；`scripts/probe-trae.ps1` 默认抓取国际版工作区 `state.vscdb` 和 Trae CN 加密库（含 WAL/SHM），全局登录状态默认不抓取。成员端仍不读取 Trae CN 本地加密库、不做进程内存扫描，继续走导出导入；真实样本到位后再校准。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.7.0（2026-11-12）**。本次新增“Trae 本地记录”来源：自动读取**国际版** Trae 的明文工作区 `state.vscdb`（`%APPDATA%\Trae\User\workspaceStorage`），按目标日解析用户/助手可见消息；读取前先复制库与 WAL/SHM 保证一致性，加密库会提示改用导出导入。Trae 导出导入继续覆盖 Trae CN 与无本地明文的场景，并支持 `raw_messages` 等包装 JSON。成员端不读取 Trae CN 加密库、不做进程内存扫描。本地读取规则来自公开资料，仍缺真实 Trae 安装复验。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -18,7 +18,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 2. 组长配置部门名称、时区、接收地址，以及模型 API Base URL、API Key、模型名称，保存后测试连接。Base URL 形如 `https://provider.example/v1`，接口为 OpenAI 兼容 Chat Completions。
 3. 成员通过内网或 VPN 访问组长电脑，默认 HTTPS 端口为 18443。组长端自动识别当前有线/Wi-Fi 内网 IP；多网卡可从下拉框选择 VPN 地址，也可手动填写固定地址或主机名。旧版保存的 `localhost` 默认地址会自动纠正。创建邀请时自动模式重新检测 IP，邀请弹窗显示实际连接地址。组长电脑需允许接收端口入站；已配对电脑连接的地址发生变化后，重新生成邀请配对。
 4. 组长新增成员并创建配对邀请。成员核对部门、地址、证书指纹和上传范围后绑定。邀请 30 分钟有效、只可使用一次；重新配对同一成员会撤销旧设备。
-5. 成员选择日期，点击“采集并选择会话”，查看会话标题、来源、项目、当日时间范围、事件数及告警。可搜索、按来源和项目筛选、批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。使用 Trae 时，先在 Trae 中导出对话文件，再到“记录来源”启用“Trae 导出”并选择导出目录，导出的会话会作为独立来源参与筛选和预览。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
+5. 成员选择日期，点击“采集并选择会话”，查看会话标题、来源、项目、当日时间范围、事件数及告警。可搜索、按来源和项目筛选、批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。使用 Trae 时：国际版会在“记录来源”里自动出现“Trae 本地记录”（直接读取明文工作区）；Trae CN 或无法自动检测的版本，先在 Trae 中导出对话文件，再启用“Trae 导出”并选择导出目录。两类 Trae 会话都作为独立来源参与筛选和预览。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
 6. 组长选择成员生成日报，独立成员同时处理，生成成功后自动下发，成员上线同步即可查看。看板每行有“预览报告”，也可选中一人点击“预览选中报告”；生成任务完成后可直接预览本次生成版本。内置只读预览显示正文、表格、个人补充和来源，支持切换历史版本，预览无需等待补充或定稿。组长可查看 Agent 当前活动、已运行时间、已接收文字量和错误。排队或生成中可在成员行、部门汇总栏或任务详情点击“取消生成”；取消后显示“已取消”，已有报告保留，可重新生成。
 7. 成员阅读只读正文，填写并提交补充。没有补充时点击“确认无补充”，实际保存文字为 `无补充说明`；补充不可留空。
 8. 组长点击“导出 PDF”，得到规定 A4 版式的 PDF，并归档该版本。个人补充按原文附尾，标明作者、提交时间和正文版本。成员可下载自己的 PDF。
@@ -59,7 +59,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 - 重交要求包含原因，由成员手动再次提交。重新提交、生成正文均保留旧版本；新正文需要重新复核补充。
 - 已导出的归档不覆盖。后续更正由组长重新开启，生成新的报告版本。正文、补充或有效来源发生变化后，原部门汇总显示来源已更新。
 - 当前个人日报、部门汇总及历史汇总导出均只生成 PDF。旧版已生成的 Word 文件保留在原位置。
-- 支持手动导入 Trae 导出文件（Markdown/TXT/JSON/JSONL）：按角色段落或消息结构解析为当日记录，支持带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块），系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae 本地加密数据库不直接读取，导出格式的自动解析仍待真实样本；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb`（国际版聊天记录）和 `database.db` 及 `-wal`/`-shm`（Trae CN 加密库），全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
+- Trae 有两类来源：**Trae 本地记录**读取国际版 Trae 明文工作区 `state.vscdb`（按目标日解析用户/助手可见消息，读取前复制库与 WAL/SHM 保证一致性；只读取聊天相关键，不读取 agent 工具明细或思考内容；加密/损坏库会提示改用导出导入）；**Trae 导出**支持手动导入 Markdown/TXT/JSON/JSONL，以及带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块）。系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae CN 加密数据库不直接读取、不扫描进程内存；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb` 和 `database.db` 及 `-wal`/`-shm`，全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
 
 ## 数据与备份
 
@@ -86,7 +86,7 @@ bash scripts/build-linux-member.sh
 
 输出 `artifacts/linux-installers/CodexDailyReport.Member.deb` 与可运行目录 `artifacts/linux-publish`。CI 在 `ubuntu-22.04` 上运行成员端库回归和 Release 构建，发布流程额外生成 `.deb`。
 
-`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、Trae 导出解析、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
+`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、Trae 导出/本地记录解析、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
 
 输出目录：
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.7.0 新增“Trae 本地记录”来源（国际版明文 `state.vscdb`）：成员端 22 项库回归通过（新增 5 项：明文读取、跨日过滤、加密库提示、坏载荷跳过、凭据脱敏），组长端 25 项、无桌面核心 22 项通过；隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源，3 会话、6 事件，预览仅含可见内容，组长端校验通过且快照来源含 `traeLocal`；探针合成目录自测、既有 `verify_multi_source`/`verify_selection` 回归、前端构建通过。Windows 双端与 Ubuntu deb 0.7.0 重建并复验启动/安装。边界：本环境没有真实 Trae 安装，本地读取规则来自公开工具的 `ItemTable`/`messages` 结构，需在装有国际版 Trae 的电脑上复验；Trae CN 仍只支持导出导入，未调用模型。
 
 0.6.2 完成 Trae 数据结构调研与不依赖样本的解析增强：成员端 17 项库回归通过（新增 `raw_messages` 包装/时间继承/标题、推理块剔除）；探针在合成目录上自测通过（国际版 workspace `state.vscdb` 复制、全局状态跳过、Trae CN 加密库含 WAL/SHM 复制、明文/加密/JSON 分类正确，证据 `artifacts/acceptance/trae-probe-selftest`）。调研结论：国际版聊天在明文 `state.vscdb`；Trae CN 为 SQLCipher 4 加密库、密钥仅能从进程内存获取，成员端不实现读取与内存扫描，继续使用官方导出导入。边界：仍无真实 Trae 导出样本；国际版明文 vscdb 的自动读取待样本确认 ItemTable 结构后评估。
 
@@ -124,4 +126,4 @@ bash scripts/build-linux-member.sh
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae 本地加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、国际版 Trae 本地明文记录、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae CN 加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。
