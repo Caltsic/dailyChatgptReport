@@ -657,6 +657,17 @@ pub(crate) fn dotnet_json(v: &Value) -> Result<String> {
     })
 }
 
+/// Collection warnings that describe known, expected limits are prefixed `说明：` and do
+/// not mark a submission as an anomaly; real collection gaps keep the warning badge.
+fn collection_problem(warnings: &[Value]) -> bool {
+    warnings.iter().any(|warning| {
+        let text = warning.as_str().unwrap_or("");
+        !text.starts_with("仅覆盖本机")
+            && !text.starts_with("未发现可用工作记录")
+            && !text.starts_with("说明：")
+    })
+}
+
 impl Leader {
     fn row(&self, c: &Connection, mid: &str, day: &str) -> Result<Value> {
         let m = member(c, mid)?;
@@ -673,12 +684,10 @@ impl Leader {
                 .then_with(|| job_time(b).cmp(job_time(a)))
         });
         let j = jobs.first().cloned().unwrap_or(Value::Null);
-        let problem = snap["warnings"].as_array().is_some_and(|a| {
-            a.iter().any(|w| {
-                !w.as_str().unwrap_or("").starts_with("仅覆盖本机")
-                    && !w.as_str().unwrap_or("").starts_with("未发现可用工作记录")
-            })
-        });
+        let problem = snap["warnings"]
+            .as_array()
+            .map(|warnings| collection_problem(warnings))
+            .unwrap_or(false);
         let submission = if notice {
             "🟡 待重交"
         } else if snap.is_null() {
@@ -881,5 +890,29 @@ fn brief(j: &Value) -> String {
             s(&j["progress"], "activity")
         ),
         _ => "—".into(),
+    }
+}
+
+#[cfg(test)]
+mod warning_tests {
+    use super::collection_problem;
+    use serde_json::json;
+
+    #[test]
+    fn informational_warnings_do_not_flag_an_anomaly() {
+        assert!(!collection_problem(&[]));
+        assert!(!collection_problem(&[
+            json!("仅覆盖本机可读取的当日事件；跨日上下文、附件及外部文件未采集。"),
+            json!("说明：Trae 导出：1 个导出文件缺少逐条时间戳，已按文件日期计入"),
+            json!("未发现可用工作记录；不代表当天没有工作"),
+        ]));
+    }
+
+    #[test]
+    fn real_collection_gaps_still_flag_an_anomaly() {
+        assert!(collection_problem(&[json!(
+            "DeepSeek Harness：跳过旧版会话格式 v3（sessions/--demo--/session-x/session.v3.jsonl.zstd），仅采集 v4"
+        )]));
+        assert!(collection_problem(&[json!("Trae 导出：1 个导出文件未识别到对话内容")]));
     }
 }

@@ -1,5 +1,23 @@
 # 变更记录
 
+## [0.6.1] - 2026-11-12
+
+### 修复
+
+- Trae 导出缺少逐条时间戳的提示改为 `说明：` 前缀，不再让该提交在组长端显示为“已收到／采集异常”；真正的采集缺口（旧格式会话、无法识别文件等）仍标记异常。组长端看板与成员状态使用同一分类。
+
+### 变更
+
+- 桌面外壳（Tauri）改为可选 `desktop` feature（默认开启）：采集与上传核心可在没有 WebKitGTK 的 Linux 环境用 `--no-default-features` 构建，便于在无桌面依赖的 Ubuntu 上验证。
+- CI 的 Ubuntu 任务增加无桌面核心回归；CONTRIBUTING 补充对应命令。
+
+### 验证
+
+- 真实跨端验收：Ubuntu 24.04 成员端（headless core）经 SSH 隧道连接真实 Windows 组长端，完成配对→Codex/DSH/Trae 三来源采集→上传→状态查询；组长端按生产上传规则校验通过（3 会话、8 事件，来源 codex 2 / dsh 4 / trae 2），证书指纹匹配。证据：`artifacts/acceptance/cross-platform-real`。
+- Ubuntu 24.04 上 15 项采集回归通过（`--no-default-features --lib`）；Windows 成员端 15 项、组长端 18 项库回归通过。
+- Windows 双端与 Ubuntu 成员端 0.6.1 安装包重建；Windows 发布目录双端以隔离数据目录实际启动无错误，deb 安装/无头启动/卸载保留数据复验通过。
+- 边界：该 Ubuntu 工作区无 sudo 与 WebKitGTK 运行时，Linux 桌面窗口仍在 WSL2 Ubuntu 22.04 验收；跨端经 SSH 反向转发（TLS 端到端），未测真实内网直连。Trae 真实导出样本仍待提供。
+
 ## [0.6.0] - 2026-11-12
 
 ### 新增

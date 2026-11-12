@@ -2,7 +2,9 @@ use sha2::{Digest, Sha256};
 use std::{env, fs, path::PathBuf};
 
 fn main() {
-    if cfg!(windows) {
+    let desktop = env::var_os("CARGO_FEATURE_DESKTOP").is_some()
+        || env::var_os("CARGO_FEATURE_LEADER").is_some();
+    if desktop && cfg!(windows) {
         // Windows examples run without a console window; embed the manifest only there.
         let manifest =
             PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("examples/windows.manifest");
@@ -26,5 +28,7 @@ fn main() {
             fs::write(out.join(format!("{name}.enc")), data).unwrap();
         }
     }
-    tauri_build::build()
+    if desktop {
+        tauri_build::build()
+    }
 }

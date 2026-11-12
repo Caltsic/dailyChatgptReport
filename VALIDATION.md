@@ -1,3 +1,16 @@
+# 0.6.1 真实 Ubuntu 跨端与提示分类
+
+日期：2026-11-12。在用户提供的独立 Ubuntu 24.04.4 工作区（ws02，x64，内核 6.8，2 核/5.8GB）完成真实跨端验收；Trae 真实样本仍未提供，自动解析仍待样本。
+
+本轮验证路径：
+
+- 平台：Ubuntu 24.04.4 LTS（非 WSL）；Rust 1.99.1 由 rustup 安装到用户目录。该机无 sudo 且未安装 WebKitGTK 运行时，因此把 Tauri 桌面外壳改为可选 `desktop` feature（默认开启），用 `--no-default-features` 构建无桌面核心；头文件用下载的 `libssl-dev`（3.0.13）解包到用户目录 + 系统同版本共享库完成链接，未改动系统。
+- 真实跨端：Ubuntu 上编译的成员端二进制通过 SSH 反向端口转发连接本机 Windows 组长端（真实 leader 代码，HTTPS + 邀请内证书指纹校验），完成配对→三来源采集（Codex、DSH v4 原始 JSONL、Trae 导出 Markdown）→选择→上传→状态查询；组长端按生产上传规则 `leader.validate_capture` 校验通过：protocol 1、3 个会话、8 条事件（codex 2 / dsh 4 / trae 2）、时区与 day 合法，状态查询在线且队列清空。证书指纹 `D9:26:70:C5:6C:CD:07:7D:12:CA:BA:22:7B:97:1F:64:A9:25:DE:E7:A9:64:25:4B:9F:C1:0F:B3:E6:BF:BA:0E`。证据：`artifacts/acceptance/cross-platform-real`（`leader-result.json`、`member-result.json`、`worker-environment.txt`、`invitation.txt`）。
+- Ubuntu 24.04 采集回归：15 项通过（`cargo test --no-default-features --lib`，含 Codex/DSH/Trae 解析、截断、坏文件、跨日）。
+- 提示分类修复：Trae 缺逐条时间戳的提示加 `说明：` 前缀，不再把提交显示为“已收到／采集异常”；旧格式会话、无法识别文件等真实缺口仍标记异常。组长端新增 2 项分类单测（合计 18 项）。
+- 交付物 0.6.1（本机重建，不进入源码仓库）：Windows 成员端安装包 1,890,769 字节（SHA-256 `DA42B60190A000B996456B2A8688FDC6C270976F314AEAD0A5DAF4E2CDF16F87`），组长端 27,919,881 字节（`5E23441C061DC7C717A44D01F97D7E1444B429EF20C80C57EF31949B87AB3355`），Ubuntu 成员端 deb 3,960,066 字节（`4E43FF9A09EA1B40332E9EF1EC2882CF0B00CA54ADA3C53EC43E68BDAB97717A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.6.1 可执行文件以隔离 `--data-dir` 实际启动、无启动错误（`artifacts/acceptance/runtime-0.6.1/result.json`）；deb 0.6.1 在 WSL Ubuntu 22.04 内 `apt install` 安装成功、已安装二进制无头启动、数据目录 0700、`apt remove` 后数据保留。
+- 边界：该机无 sudo、apt 代理需要认证，无法安装 WebKitGTK 运行时，所以 Linux **桌面窗口**没有在这台 Ubuntu 24.04 上运行；桌面外壳仍在 WSL2 Ubuntu 22.04 上做无头启动/安装验收。跨网段测试使用 SSH 反向转发（Ubuntu 工作区不能直连 Windows 局域网），TLS 端到端；真实内网直连部署尚未验证。Trae 真实导出样本仍待提供。
+
 # 0.6.0 Trae 导出导入
 
 日期：2026-11-12。成员端新增 Trae 手动导出导入来源；组长端协议、Agent 与提示词未改。Trae 本地加密数据库不直接读取，自动解析待真实样本。

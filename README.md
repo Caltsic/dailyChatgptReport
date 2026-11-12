@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.6.0（2026-11-12）**。本次成员端新增“Trae 导出”来源：在 Trae 中手动导出对话文件（Markdown/TXT/JSON/JSONL）后，选择导出文件所在目录即可与 Codex、DeepSeek Harness 一起采集；按角色段落或消息结构解析，系统段落和导出元数据不采集，缺少逐条时间戳时按文件日期计入并在采集说明中提示，上传前可在预览中核对。Trae 本地加密数据库不直接读取，自动解析仍待真实样本。组长端协议与 Agent 未改，沿用 0.5.0 的双端与 Linux 平台层行为。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.6.1（2026-11-12）**。本次在用户提供的 Ubuntu 24.04.4 独立工作区完成真实跨端验收：Linux 成员端核心经 SSH 隧道连接本机 Windows 组长端，完成配对、Codex/DSH/Trae 三来源采集、上传与状态查询，组长端按生产规则校验通过；同时修复 Trae 缺时间戳提示会误标“采集异常”的问题（`说明：` 前缀的提示不再计入异常）。桌面外壳改为可选 `desktop` feature，便于无 WebKitGTK 的 Linux 环境构建和测试采集核心。Trae 本地加密数据库仍不直接读取，自动解析待真实样本。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -98,6 +98,8 @@ bash scripts/build-linux-member.sh
 
 ## 当前验证范围
 
+0.6.1 在用户提供的独立 Ubuntu 24.04.4 工作区完成真实跨端验收：Linux 成员端核心（`--no-default-features`，无 Tauri/WebKitGTK 依赖）在本机 Windows 组长端的真实 HTTPS 服务上通过 SSH 反向转发完成配对→Codex/DSH/Trae 三来源采集→上传→状态查询，组长端按生产规则 `leader.validate_capture` 校验通过（protocol 1、3 会话、8 事件、时区/day 合法）；Ubuntu 24.04 上 15 项采集回归通过；新增 2 项提示分类单测（组长端合计 18 项）。Trae 缺时间戳的 `说明：` 提示不再误标“采集异常”，真实采集缺口仍标记。Windows 双端与 Ubuntu deb 0.6.1 重建：Windows 发布目录双端以隔离 `--data-dir` 实际启动无错误，deb 在 WSL 内安装、无头启动、卸载保留数据复验通过。边界：该机无 sudo 且无 WebKitGTK 运行时，Linux 桌面窗口仍在 WSL2 Ubuntu 22.04 上验收；跨端测试经 SSH 隧道（工作区不能直连 Windows 局域网），TLS 端到端；Trae 真实导出样本仍待提供，未调用模型。
+
 0.6.0 新增 Trae 导出导入：成员端 15 项、组长端 16 项库回归通过，覆盖 Markdown/JSON/JSONL 导出解析、无时间戳按文件日期、跨日跳过、坏文件告警、系统段落与导出元数据剔除、凭据脱敏；隔离目录通过实际 HTTPS 把 Trae 导出与 Codex 记录合并采集并上传，组长端校验通过，快照含两类来源且无系统段落/导出元数据；既有 Codex+DSH 上传与选择流程回归通过，前端 TypeScript 构建通过。Windows 双端 0.6.0 安装包与 Ubuntu 成员端 deb 重建：Windows 发布目录双端可执行文件以隔离 `--data-dir` 实际启动、无启动错误；deb 在 WSL 内 `apt install` 安装成功，已安装二进制无头启动、`apt remove` 后成员数据保留。本轮只用合成导出样例，未获得真实 Trae 导出样本，未读取 Trae 本地加密数据库，未调用模型。
 
 0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；把交付的 `.deb` 用 `apt install` 与 `--reinstall` 实际安装成功（依赖自动补齐、desktop 入口与 `Categories=Office` 就位），已安装的二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。Windows 发布目录双端 0.5.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误。跨端协议分两端验证：Linux 成员端在 WSL 内用真实 HTTPS 监听器完成配对、双来源采集、上传与状态查询（正确指纹通过、错误指纹被拒绝、内部记录未上传），Linux 采集的 capture 再由真实 Windows 组长端 `leader.validate_capture` 校验通过。Trae 探测脚本在合成目录树上自测通过（明文 SQLite / 加密库分类与复制），真实 Trae 样本仍待提供。边界：本环境 WSL↔Windows 网络被防火墙拦截，未做跨端实机配对；未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收。
@@ -120,4 +122,4 @@ bash scripts/build-linux-member.sh
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64 双端、Ubuntu 22.04+ x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae 本地加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae 本地加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。

@@ -42,6 +42,12 @@ npm run build
 cargo test --manifest-path src-tauri/Cargo.toml --lib   # 不要加 --features leader
 ```
 
+没有 WebKitGTK/桌面依赖的 Linux 环境只验证采集与上传核心：
+
+```bash
+cargo test --manifest-path desktop/src-tauri/Cargo.toml --no-default-features --lib
+```
+
 发布 `.deb` 由 `scripts/build-linux-member.sh` 或发布工作流生成。
 
 ## Pull Request

@@ -156,7 +156,7 @@ pub(crate) fn collect(
         }
         if used_fallback_time {
             untimed += 1;
-            session_warnings.push(format!("{relative} 部分记录没有时间戳，按文件日期计入"));
+            session_warnings.push(format!("说明：{relative} 部分记录没有时间戳，按文件日期计入"));
         }
         let title = session_title(&content, &relative);
         let session = json!({"id":session_id,"title":title,"project":"","warnings":session_warnings,
@@ -172,7 +172,7 @@ pub(crate) fn collect(
     }
     if untimed > 0 {
         global_warnings.push(format!(
-            "{LABEL_TRAE}：{untimed} 个导出文件缺少逐条时间戳，已按文件日期计入"
+            "说明：{LABEL_TRAE}：{untimed} 个导出文件缺少逐条时间戳，已按文件日期计入"
         ));
     }
     Ok(super::SourceCapture {

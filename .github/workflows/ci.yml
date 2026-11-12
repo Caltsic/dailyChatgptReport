@@ -59,6 +59,9 @@ jobs:
         working-directory: desktop
       - run: npm run build
         working-directory: desktop
+      # The collector/upload core must also build and test without the Tauri desktop
+      # shell, so headless Linux hosts without WebKitGTK can be supported.
+      - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --no-default-features --lib
       # The leader end stays Windows-only, so only the member feature is built here.
       - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib
       - run: cargo build --manifest-path desktop/src-tauri/Cargo.toml --release

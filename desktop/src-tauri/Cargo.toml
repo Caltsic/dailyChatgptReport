@@ -1,6 +1,6 @@
 [package]
 name = "codex-daily-report"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 
 [lib]
@@ -12,8 +12,11 @@ name = "codex-daily-report"
 path = "src/main.rs"
 
 [features]
-default = []
-leader = ["dep:axum", "dep:hyper", "dep:hyper-util", "dep:tower", "dep:flate2", "dep:aes-gcm", "dep:pulldown-cmark", "dep:zip", "dep:webview2-com", "dep:rcgen", "dep:p12", "windows/Win32_NetworkManagement_IpHelper", "windows/Win32_NetworkManagement_Ndis", "windows/Win32_Networking_WinSock"]
+default = ["desktop"]
+# Desktop shell (Tauri + WebView2/WebKitGTK). The headless member core (collector and
+# upload client) builds with `--no-default-features` for Linux acceptance/CI.
+desktop = ["dep:tauri", "dep:tauri-plugin-dialog", "dep:tauri-plugin-single-instance"]
+leader = ["desktop", "dep:axum", "dep:hyper", "dep:hyper-util", "dep:tower", "dep:flate2", "dep:aes-gcm", "dep:pulldown-cmark", "dep:zip", "dep:webview2-com", "dep:rcgen", "dep:p12", "windows/Win32_NetworkManagement_IpHelper", "windows/Win32_NetworkManagement_Ndis", "windows/Win32_Networking_WinSock"]
 
 [build-dependencies]
 tauri-build = { version = "=2.7.4", features = [] }
@@ -22,8 +25,9 @@ sha2 = "0.10"
 uuid = { version = "1", features = ["v4"] }
 
 [dependencies]
-tauri = { version = "=2.12.5", features = ["tray-icon"] }
-tauri-plugin-dialog = "=2.8.4"
+tauri = { version = "=2.12.5", features = ["tray-icon"], optional = true }
+tauri-plugin-dialog = { version = "=2.8.4", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
@@ -58,12 +62,11 @@ windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security_Cr
 webview2-com = { version = "0.39", optional = true }
 p12 = { version = "0.6", optional = true }
 
-# Linux member: secrets are encrypted with a machine-bound key and one running
-# instance at a time; the second launch restores the hidden window instead of the
-# Windows-style message box.
+# Linux member: secrets are encrypted with a machine-bound key and the desktop shell
+# uses a single-instance plugin; the second launch restores the hidden window instead of
+# the Windows-style message box.
 [target.'cfg(not(windows))'.dependencies]
 aes-gcm = "0.10"
-tauri-plugin-single-instance = "2"
 
 # The Linux transport acceptance example generates its own local TLS certificate.
 [target.'cfg(unix)'.dev-dependencies]

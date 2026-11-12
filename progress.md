@@ -1,3 +1,12 @@
+## 0.6.1 真实 Ubuntu 跨端验收（用户提供工作区）
+
+- 用户提供独立 Ubuntu 24.04.4 工作区（SSH：worker@192.168.5.113:22002），本机无 sudo、无 WebKitGTK 运行时，但有 gcc/rustup 网络。
+- 把 Tauri 桌面外壳改为可选 `desktop` feature（默认开启）；`--no-default-features` 在 Ubuntu 24.04 上构建采集/上传核心，避免安装 WebKitGTK。用户态解包 libssl-dev 3.0.13 头文件解决链接，未改系统。
+- 真实跨端：Ubuntu 成员端二进制经 SSH 反向转发连接本机 Windows 组长端（真实 leader HTTPS + 证书指纹），配对→Codex/DSH/Trae 三来源采集→上传→状态查询全部成功；组长端 `leader.validate_capture` 通过（3 会话/8 事件，protocol 1，时区/day 合法）。证据 `artifacts/acceptance/cross-platform-real`。
+- Ubuntu 24.04 上 15 项采集回归通过。
+- 修复 Trae 缺时间戳提示误标“采集异常”：提示加 `说明：` 前缀，组长端分类忽略该类提示（新增 2 项单测，组长端 18 项）；真正缺口仍标记。
+- 版本 0.6.1，CI 增加无桌面核心回归；Trae 真实样本仍待用户提供，Linux 桌面窗口仍未在该机验收（无 WebKitGTK/sudo）。
+
 ## 0.6 Trae 导出导入
 
 - 需求：Trae 安装在 Windows，本地对话在加密 SQLite 库中，样本尚未提供。先把"官方导出导入"打通：成员在 Trae 中导出对话文件，选择其所在目录后与 Codex/DSH 一起采集；自动读取加密库待样本后评估。
