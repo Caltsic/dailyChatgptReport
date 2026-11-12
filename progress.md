@@ -5,7 +5,7 @@
 - Cargo：`windows`、`webview2-com`、`p12` 移到 Windows 目标依赖；Linux 增加 `aes-gcm` 与 `tauri-plugin-single-instance`；`build.rs` 的 manifest 链接参数仅 Windows。
 - 打包：`tauri.conf.json` 增加 PNG 图标与 `linux.deb.depends`（WebKitGTK 4.1、GTK3、AppIndicator、libssl3、xdg-utils、fonts-noto-cjk）；新增 `scripts/build-linux-member.sh`；CI 增加 ubuntu-22.04 成员端任务，发布流程增加成员端 deb。
 - 文档：README/INTEGRATION/SECURITY/CONTRIBUTING 增加 Linux 安装、数据目录、凭据与构建说明；UI 字体增加 Noto CJK 回退。
-- 验证：WSL Ubuntu 22.04 上库回归、Release 构建、deb 打包与 Xvfb 无头启动通过；Windows 双端重建与既有回归不变。详见 `VALIDATION.md`。
+- 验证：WSL Ubuntu 22.04 上库回归、Release 构建、deb 打包与 Xvfb 无头启动通过；交付的 deb 用 `apt install` 实际安装成功并用已安装二进制无头启动。跨端协议分两端验证：Linux 成员端对真实 HTTPS 监听器完成配对/采集/上传/状态查询（错误指纹被拒），Linux 采集的 capture 通过真实 Windows 组长端上传校验；本机 WSL↔Windows 网络被防火墙拦截，跨端网络级实机配对留待真实环境。Windows 双端重建与既有回归不变。详见 `VALIDATION.md`。
 
 ## 0.4 多来源采集（Codex + DeepSeek Harness）
 

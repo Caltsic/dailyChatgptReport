@@ -17,9 +17,10 @@
 
 ### 验证
 
-- WSL Ubuntu 22.04 上 `cargo test --lib`（10 项库回归）、Release 构建、`.deb` 打包与 Xvfb 无头启动通过；deb 文件列表与依赖已核对。
+- WSL Ubuntu 22.04 上 `cargo test --lib`（9 项库回归）、Release 构建、`.deb` 打包与 Xvfb 无头启动通过；交付的 `.deb` 用 `apt install` 实际安装成功，已安装的二进制无头启动正常。
+- 跨端协议分两端验证：Linux 成员端对真实 HTTPS 监听器完成配对/采集/上传/状态查询（指纹正确通过、错误指纹被拒），Linux 采集的 capture 通过真实 Windows 组长端上传校验；跨端网络级实机配对受本机沙箱网络限制未执行。
 - Windows 双端 Release 与 NSIS 安装包重建通过，成员端/组长端回归与 0.4.0 一致。
-- 未在真实 Ubuntu 桌面、Wayland 会话或 ARM 设备上验收；未做跨端 Linux 成员 ↔ Windows 组长实机配对。
+- 未在真实 Ubuntu 桌面、Wayland 会话或 ARM 设备上验收。
 
 ## [0.4.0] - 2026-11-12
 

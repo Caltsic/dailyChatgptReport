@@ -98,7 +98,7 @@ bash scripts/build-linux-member.sh
 
 ## 当前验证范围
 
-0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；核对 deb 依赖（WebKitGTK 4.1、GTK3、AppIndicator、OpenSSL、xdg-utils、Noto CJK）与文件列表，数据目录权限 0700，单实例第二个进程退出且第一个继续运行。Windows 双端在平台层拆分后回归通过并重建 0.5.0 安装包。边界：未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收，未在 WSL 内实际 `dpkg -i` 安装，也未用 Linux 成员端连接 Windows 组长端做实际配对上传。
+0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；把交付的 `.deb` 用 `apt install` 实际安装成功（依赖自动补齐、desktop 入口就位），并用已安装的二进制无头启动，数据目录权限 0700。跨端协议分两端验证：Linux 成员端在 WSL 内用真实 HTTPS 监听器完成配对、双来源采集、上传与状态查询（正确指纹通过、错误指纹被拒绝、内部记录未上传），Linux 采集的 capture 再由真实 Windows 组长端 `leader.validate_capture` 校验通过。Windows 双端在平台层拆分后回归通过并重建 0.5.0 安装包。边界：本环境 WSL↔Windows 网络被防火墙拦截，未做跨端实机配对；未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收。
 
 0.4.0 在隔离目录通过实际 HTTPS 完成多来源采集与上传：Codex 与会话格式 v4 的 DeepSeek Harness 同日记录合并采集，成员端按来源筛选并上传，组长端校验后快照包含两类来源事件。DSH 内部记录（系统提示、请求头与会话日志投递记录）经结构核对未进入采集内容；旧格式会话、损坏尾部、注入型用户消息和单条超长记录分别由合成样例覆盖。本机真实 DSH 数据只做只读计数探针（`cargo run --example verify_sources`），未上传、未写入报告。前端 TypeScript 构建与两端 Rust 库回归通过；本轮不调用外部模型、不修改生产数据。
 

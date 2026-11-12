@@ -65,6 +65,10 @@ p12 = { version = "0.6", optional = true }
 aes-gcm = "0.10"
 tauri-plugin-single-instance = "2"
 
+# The Linux transport acceptance example generates its own local TLS certificate.
+[target.'cfg(unix)'.dev-dependencies]
+rcgen = "0.13"
+
 [profile.release]
 opt-level = "s"
 lto = "thin"

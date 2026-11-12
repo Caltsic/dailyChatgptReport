@@ -480,6 +480,10 @@ impl Leader {
         );
         Ok(())
     }
+    /// Acceptance hook: run exactly the checks used by the member upload route.
+    pub fn validate_capture_value(&self, capture: &Value) -> Result<()> {
+        self.validate_capture(capture)
+    }
     fn load_capture(&self, snap: &Value) -> Result<Value> {
         load_capture_at(&self.store.root, snap)
     }

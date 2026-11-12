@@ -9,8 +9,12 @@
 - 无头启动：Xvfb + dbus-run-session 下以 `--data-dir` 启动，进程持续运行超过 12 秒；数据目录自动创建且权限为 0700，无 `startup-error.txt`，本环境托盘构建成功、无托盘失败提示。环境内 xdg-desktop-portal 的 PipeWire 警告与 GTK 无窗口管理器提示不影响启动。
 - 单实例：同一数据目录启动第二个实例，第二个进程返回 0 后退出，第一个实例继续运行；再次启动恢复已隐藏窗口的单实例插件分支可用。
 - Windows 回归：平台层拆分后 Windows `cargo test --lib`（9 项）与 `--features leader`（10 项，含内置提示词解密）通过；Windows 双端 0.5.0 Release 与 NSIS 安装包重建通过。
+- 包安装与运行：把交付的 `CodexDailyReport.Member.deb`（SHA-256 `B06CDE5F…D0BC2`）在 WSL 内用 `apt install` 实际安装成功，`dpkg -s` 为 `install ok installed`、版本 0.5.0、架构 amd64，依赖由 apt 自动补齐；`/usr/bin/CodexDailyReport.Member` 与 desktop 入口就位。用已安装的二进制在 Xvfb + dbus 下以 `--data-dir` 启动，进程持续运行，数据目录权限 0700 且创建 outbox，无 `startup-error.txt`。
 - 交付产物（本机重建，均不进入源码仓库）：Windows 成员端安装包 1,876,123 字节（SHA-256 `38A1E87E31FAF41BCBB6421D66241278A0A53408E6179561F3BA12CA07AEC3DD`），组长端 27,920,012 字节（`F71E3E5109D07E68A01DF107116A078926352B4A7852CD0ED841BA2FC7B1D0C7`），源码包 291,931 字节（`FB5CF3431358455B3D5E13B45D2A63CF90C6D805F3E7818B3FC724E213804973`），Ubuntu 成员端 deb 3,937,386 字节（`B06CDE5FB6C0B9FECE591DAB133599BB4BB76D54AD5DEF076F20498E918D0BC2`）。
-- 边界：未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未在 WSL 内执行 `dpkg -i` 实际安装（只核对 deb 元数据与文件列表）；未用 Linux 成员端连接 Windows 组长端做实际配对/上传；未覆盖 ARM 和 Ubuntu 20.04。跨端协议与 Windows 端一致但本轮未在 Linux 端实测 HTTPS 流程。
+- 跨端协议验证（本机沙箱内 WSL 无法访问 Windows 主机端口：Windows 防火墙拦截入站，且 WSL 镜像网络模式配置失败，故拆成两端分别验证）：
+  1) Linux 成员端在 WSL 内对**真实 HTTPS 监听器**（示例内置协议对端，按 v1 路由实现 `/v1/pair`、`/v1/status/{day}`、`/v1/submissions`、`/v1/supplements` 与 Bearer 校验）完成配对、Codex+DSH 双来源采集、上传与状态查询；正确指纹成功、错误指纹在 TLS 阶段被拒绝；上传的 capture 经服务端协议版本、时区、哈希、事件类型与会话计数校验；DSH 内部记录未进入上传内容。证据：`examples/verify_member_transport`（Linux-only）与 `artifacts/acceptance/linux-transport/result.json`。
+  2) 把 Linux 端采集并上传的 capture JSON 交给**真实 Windows 组长端**的 `leader.validate_capture` 校验，结果通过（2 会话、6 事件、协议 1、时区与事件时间范围一致，来源摘要含 codex/dsh）。证据：`examples/verify_capture_file` 与 `artifacts/acceptance/cross-platform/leader-validation.json`。
+- 边界：跨端**网络级实机配对**仍未验证（此环境 WSL↔Windows 网络被拦截，见上）；未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未覆盖 ARM 和 Ubuntu 20.04；Linux 端出现 xdg-desktop-portal 的 PipeWire 警告，属无头环境提示。
 
 # 0.4.0 多来源采集（Codex + DeepSeek Harness）
 

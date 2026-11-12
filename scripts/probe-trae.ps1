@@ -56,6 +56,27 @@ $names = @('database.db')
 if ($IncludeStateDb) { $names += @('state.vscdb', 'storage.json') }
 $records = New-Item -ItemType Directory -Force -Path (Join-Path $Output 'files')
 
+# Plain SQLite starts with "SQLite format 3\0"; an encrypted SQLCipher database has a
+# random-looking header. This classification tells the maintainer whether a plain parser
+# is possible before any decryption work.
+function Get-DbKind([System.IO.FileInfo]$File) {
+    try {
+        $stream = [System.IO.File]::OpenRead($File.FullName)
+        try {
+            $buffer = New-Object byte[] 16
+            $read = $stream.Read($buffer, 0, 16)
+        } finally { $stream.Dispose() }
+        $header = ($buffer[0..([Math]::Max(0, $read - 1))] | ForEach-Object { $_.ToString('X2') }) -join ' '
+        $ascii = -join ($buffer[0..([Math]::Max(0, $read - 1))] | ForEach-Object { if ($_ -ge 32 -and $_ -lt 127) { [char]$_ } else { '.' } })
+        if ($read -ge 16 -and $ascii.StartsWith('SQLite format 3')) {
+            return @{ kind = 'sqlite-plaintext'; header = $header }
+        }
+        return @{ kind = 'encrypted-or-unknown'; header = $header }
+    } catch {
+        return @{ kind = 'unreadable'; header = '' }
+    }
+}
+
 Write-Host '=== candidate roots ==='
 $report = foreach ($root in $candidates) {
     Write-Host $root
@@ -67,12 +88,15 @@ $report = foreach ($root in $candidates) {
                 $target = Join-Path (Join-Path $records $safeRoot) $relative
                 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
                 Copy-Item -LiteralPath $_.FullName -Destination $target -Force
+                $kind = Get-DbKind $_
                 [pscustomobject]@{
                     root = $root
                     source = $_.FullName
                     file = $name
                     bytes = $_.Length
                     modified = $_.LastWriteTime
+                    format = $kind.kind
+                    headerHex = $kind.header
                     copied = $target
                 }
             }
