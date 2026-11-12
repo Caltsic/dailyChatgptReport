@@ -13,12 +13,14 @@
 
 - 平台层拆分：Windows 保留 DPAPI、MoveFileEx、ShellExecuteW、单实例互斥与 WebView2；Linux 使用 AES-256-GCM 本机密钥、原子 rename、`xdg-open` 与单实例插件。
 - `windows`、`webview2-com`、`p12` 改为 Windows 目标依赖；Linux 构建不启用组长端功能。构建脚本与源码包加入 Linux 构建入口。
-- UI 字体增加 Noto CJK 回退，`deb` 依赖声明 WebKitGTK 4.1、GTK3、AppIndicator、OpenSSL、xdg-utils 与 Noto CJK 字体。
+- UI 字体增加 Noto CJK 回退，`deb` 依赖声明 WebKitGTK 4.1、GTK3、AppIndicator、OpenSSL、xdg-utils 与 Noto CJK 字体；Linux desktop 入口使用 `Categories=Office`，在应用菜单中归类显示。
 
 ### 验证
 
-- WSL Ubuntu 22.04 上 `cargo test --lib`（9 项库回归）、Release 构建、`.deb` 打包与 Xvfb 无头启动通过；交付的 `.deb` 用 `apt install` 实际安装成功，已安装的二进制无头启动正常。
+- WSL Ubuntu 22.04 上 `cargo test --lib`（9 项库回归）、Release 构建、`.deb` 打包与 Xvfb 无头启动通过；交付的 `.deb` 用 `apt install`/`--reinstall` 实际安装成功，已安装的二进制无头启动正常，`apt remove` 后成员数据目录保留。
+- Windows 发布目录双端 0.5.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误。
 - 跨端协议分两端验证：Linux 成员端对真实 HTTPS 监听器完成配对/采集/上传/状态查询（指纹正确通过、错误指纹被拒），Linux 采集的 capture 通过真实 Windows 组长端上传校验；跨端网络级实机配对受本机沙箱网络限制未执行。
+- Trae 探测脚本在合成目录树上自测通过（明文 SQLite / 加密库分类与文件复制），真实 Trae 样本仍待提供。
 - Windows 双端 Release 与 NSIS 安装包重建通过，成员端/组长端回归与 0.4.0 一致。
 - 未在真实 Ubuntu 桌面、Wayland 会话或 ARM 设备上验收。
 

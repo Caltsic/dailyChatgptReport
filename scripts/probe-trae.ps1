@@ -13,7 +13,9 @@
 # have "导出为 md") and put the exported file in the same folder.
 param(
     [string]$Output = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\trae-probe'),
-    [switch]$IncludeStateDb
+    [switch]$IncludeStateDb,
+    # Additional data roots (for a non-default install or for testing the probe itself).
+    [string[]]$ExtraRoots = @()
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Output | Out-Null
@@ -45,7 +47,7 @@ $candidates = @(
     (Join-Path $env:USERPROFILE '.trae'),
     (Join-Path $env:USERPROFILE '.trae-cn'),
     (Join-Path $env:USERPROFILE '.trae-aicc')
-) | Where-Object { Test-Path -LiteralPath $_ }
+) + $ExtraRoots | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
 
 if (-not $candidates) {
     Write-Warning '没有找到 Trae 数据目录。请在安装了 Trae 的电脑上运行本脚本，或手动提供 Trae 数据目录。'
