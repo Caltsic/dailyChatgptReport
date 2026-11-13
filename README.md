@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.7.2（2026-11-12）**。本次完善 Ubuntu deb 包元数据（补上简介/描述与桌面入口注释、依赖去重）并清理 clippy 告警（三种构建配置均为 0 警告）；功能与 0.7.1 相同。0.7.1 已支持 Trae 导出 JSON 多会话拆分；成员端不读取 Trae CN 加密库、不做进程内存扫描，真实 Trae 导出样本仍待提供。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.7.3（2026-11-13）**。本次修复组长端“测试已保存模型配置”总报 `AttributeError: 'str' object has no attribute 'get'` 的问题：连接测试传给报告 Agent 的是纯字符串输入，收尾生成采集范围摘要时假定为对象而报错；现已按 0 条事件/报告处理，与网关地址、模型和接口格式无关。其他功能与 0.7.2 相同。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -97,6 +97,8 @@ bash scripts/build-linux-member.sh
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.7.3 修复“测试模型连接”失败：`leader.testConnection` 的字符串输入导致流水线收尾取 `input.events` 时抛 AttributeError；已改为对非对象输入按空负载统计，新增 Agent 回归用例（修复前可稳定复现、修复后通过）。`agent/smoke_test.py`、`agent/pipeline_smoke_test.py` 通过；重建组长端 Agent 运行时与 Windows 双端安装包。边界：未用用户网关做真实调用（无凭据），连通性以用户点“测试”为准。
 
 0.7.2 完善 Ubuntu 包元数据与代码检查：deb 控制信息补上 Description/桌面 `Comment`、依赖去重（WebKitGTK 4.1/GTK3/AppIndicator 由打包器自动添加）；`cargo clippy` 在成员端、组长端、无桌面核心三种配置下 0 警告；deb 安装/无头启动/卸载保留数据复验，Windows 双端与 deb 0.7.2 重建并复验启动。成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。功能与 0.7.1 相同，未调用模型。
 

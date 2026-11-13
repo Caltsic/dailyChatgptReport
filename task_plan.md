@@ -1,3 +1,10 @@
+# 0.7.3 修复连接测试 AttributeError
+
+- [x] 定位：leader.testConnection 字符串 input + coverage() 假定对象。
+- [x] 修复 coverage；新增 Agent 回归用例（修复前复现、修复后通过）；两个 agent 测试通过。
+- [x] 版本 0.7.3、文档更新、重建 agent runtime 与安装包。
+- [ ] 用户用真实网关点“测试”确认连通性。
+
 # 0.7.2 Ubuntu 包元数据与代码检查
 
 - [x] deb Description/长描述/桌面 Comment 补齐、Depends 去重；apt 安装/启动/卸载复验。

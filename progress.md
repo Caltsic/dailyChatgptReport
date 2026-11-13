@@ -1,3 +1,10 @@
+## 0.7.3 修复连接测试 AttributeError
+
+- 现象：保存模型配置后点“测试已保存模型配置”，总是 `Agent 执行失败（AttributeError）；'str' object has no attribute 'get'`。
+- 根因：`leader.testConnection` 传入 Agent 的 `input` 是字符串 `"测试模型连接"`；`report_pipeline.coverage()` 在成稿收尾时取 `self.input.get("events")` 假定为对象 → AttributeError（异常发生在模型成功回复之后，所以“连接通了却报错”）。
+- 修复：coverage 对非对象输入按 0 事件/0 报告统计。新增 smoke_test 连接测试用例（修复前复现、修复后通过），两个 Agent 测试全通过。
+- 版本 0.7.3；重建 agent runtime 与 Windows 双端安装包、Ubuntu deb。未用用户网关真实调用（无凭据）。
+
 ## 0.7.2 Ubuntu 包元数据与 clippy 清理
 
 - deb 增加 shortDescription/longDescription（控制信息 Description、桌面 Comment），依赖去重（WebKitGTK/GTK3/AppIndicator 自动加入，仅显式声明 libssl3/xdg-utils/fonts-noto-cjk）。

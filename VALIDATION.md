@@ -1,3 +1,13 @@
+# 0.7.3 修复“测试模型连接”报 AttributeError
+
+日期：2026-11-13。用户用自建网关（`https://twai.aiourstory.cn/v1`、`deepseek-v4.1-flash-1017`）保存配置后点“测试已保存模型配置”，总是收到 `Agent 执行失败（AttributeError）；'str' object has no attribute 'get'`。
+
+- 定位：`desktop/src-tauri/src/leader.rs` 的 `leader.testConnection` 调用 Agent 时传入的 `input` 是 `json!("测试模型连接")`（字符串），而 `agent/report_pipeline.py` 在成稿结束时调用 `coverage()` 生成采集范围摘要，其中 `self.input.get("events")` 假定输入是对象 → 抛出 AttributeError。因为异常发生在模型已成功回复之后的收尾阶段，所以表现为“连接其实通了但报错”，且与网关地址/模型/接口格式无关。
+- 修复：`coverage()` 对非对象输入按空负载处理（事件/报告计数为 0），行为与 `kind="test"` 的“无需分段”设计一致；其余路径不变。
+- 回归：在 `agent/smoke_test.py` 增加“连接测试”用例（字符串输入、完整 runtime、断言成功且 coverage 计数为 0、模式 direct）；修复前该用例稳定复现同一 AttributeError，修复后通过。`agent/smoke_test.py`（流式断流重试、EOF、401 诊断、断点复用、连接测试）与 `agent/pipeline_smoke_test.py`（分段并行、容量溢出细分、引用修复、恢复、部门汇总归因）全部通过。
+- 交付物 0.7.3（本机重建）：Windows 成员端安装包 2,415,818 字节（`5597F0EFB0D3C41F39CF9698490274895915D3D6E89AA10A06BCC57E9B1C138D`），组长端 27,908,857 字节（`D014D5420F16E1AED711DEFB2102578EAFCE04CF228458A23AC92710E03326D0`），Ubuntu 成员端 deb 3,993,090 字节（`2542B03971EDE7CC9718D6376A49757D09D122DBF9F8BAD51586F18BEBA26187`），源码包 97 个文件（`0947EA35CE49C2C20B4686F6523B484348E05F2C5C4E4E6899A8D00B1A9DC`）；SHA 清单见 `artifacts/installers/SHA256.txt`、`artifacts/linux-installers/SHA256.txt`。Windows 发布目录双端 0.7.3 以隔离数据目录实际启动正常；deb 在 WSL Ubuntu 22.04 内 `apt install`、无头启动、`apt remove` 后数据保留复验通过。
+- 边界：本轮未接入用户网关做真实调用（无凭据），修复依据是本地完整 runtime 复现；真实网关连通性仍由用户点“测试”验证。
+
 # 0.7.2 Ubuntu 包元数据与代码检查清理
 
 日期：2026-11-12。功能与 0.7.1 相同；本轮完善 Linux 包元数据、清理 clippy 告警并重建交付物。

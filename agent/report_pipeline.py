@@ -640,8 +640,16 @@ class ReportPipeline:
 
     def coverage(self) -> dict:
         primary = [p for p in self.pieces.values() if p.get("stage") == "extract" and p["state"] != "split"]
+        # The connection test sends a plain prompt string instead of a report payload, so
+        # the summary must not assume a dict input.
+        payload = self.input if isinstance(self.input, dict) else {}
+
+        def count(key: str) -> int:
+            value = payload.get(key)
+            return len(value) if isinstance(value, list) else 0
+
         return {"pipelineVersion": PIPELINE_VERSION, "mode": "staged" if primary else "direct", "estimatedTokens": self.estimated, "tokenizer": self.encoding.name,
-            "inputEvents": len(self.input.get("events", [])), "inputReports": len(self.input.get("reports", [])),
+            "inputEvents": count("events"), "inputReports": count("reports"),
             "segments": [{key: item[key] for key in ("id", "label", "state", "ranges") if key in item} for item in primary],
             "complete": all(item["state"] == "completed" for item in primary)}
 

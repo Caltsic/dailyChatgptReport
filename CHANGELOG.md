@@ -1,5 +1,17 @@
 # 变更记录
 
+## [0.7.3] - 2026-11-13
+
+### 修复
+
+- 修复“测试已保存模型配置”总是失败：`leader.testConnection` 传给报告 Agent 的 `input` 是一个纯字符串（`"测试模型连接"`），而流水线在结束阶段生成采集范围摘要时假定 `input` 是对象，取 `events`/`reports` 时抛 `AttributeError: 'str' object has no attribute 'get'`，界面显示“Agent 执行失败（AttributeError）；'str' object has no attribute 'get'”。现在摘要对非对象输入按 0 条事件/0 份报告处理。该问题与模型地址、模型名称、接口格式无关，任何已保存配置点“测试”都会出现。
+
+### 验证
+
+- 新增 Agent 回归：以 `kind="test"`、字符串输入跑完整 runtime，断言返回成功且 `coverage.inputEvents/inputReports` 为 0、模式为 `direct`（修复前该用例复现同一 AttributeError）。
+- `agent/smoke_test.py`、`agent/pipeline_smoke_test.py` 通过（含流式中断恢复、断点复用、401 诊断、分段/并行/引用修复与部门汇总用例）。
+- 重建组长端 Agent 运行时与 Windows 双端安装包；Ubuntu 成员端 deb 同版本重建。
+
 ## [0.7.2] - 2026-11-12
 
 ### 改进
