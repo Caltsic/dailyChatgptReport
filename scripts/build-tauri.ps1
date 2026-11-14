@@ -11,8 +11,8 @@ try {
     & npm.cmd run build
     if($LASTEXITCODE){throw 'Frontend build failed'}
     if(!$SkipTests) {
-        & cargo test --manifest-path src-tauri/Cargo.toml --lib migrated_collector
-        if($LASTEXITCODE){throw 'Collector migration check failed'}
+        & cargo test --manifest-path src-tauri/Cargo.toml --lib
+        if($LASTEXITCODE){throw 'Collector regression check failed'}
     }
     $output=Join-Path $root 'artifacts\tauri-installers'
     New-Item -ItemType Directory -Force -Path $output | Out-Null

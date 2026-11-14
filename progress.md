@@ -1,3 +1,112 @@
+## 0.7.3 修复连接测试 AttributeError
+
+- 现象：保存模型配置后点“测试已保存模型配置”，总是 `Agent 执行失败（AttributeError）；'str' object has no attribute 'get'`。
+- 根因：`leader.testConnection` 传入 Agent 的 `input` 是字符串 `"测试模型连接"`；`report_pipeline.coverage()` 在成稿收尾时取 `self.input.get("events")` 假定为对象 → AttributeError（异常发生在模型成功回复之后，所以“连接通了却报错”）。
+- 修复：coverage 对非对象输入按 0 事件/0 报告统计。新增 smoke_test 连接测试用例（修复前复现、修复后通过），两个 Agent 测试全通过。
+- 版本 0.7.3；重建 agent runtime 与 Windows 双端安装包、Ubuntu deb。未用用户网关真实调用（无凭据）。
+
+## 0.7.2 Ubuntu 包元数据与 clippy 清理
+
+- deb 增加 shortDescription/longDescription（控制信息 Description、桌面 Comment），依赖去重（WebKitGTK/GTK3/AppIndicator 自动加入，仅显式声明 libssl3/xdg-utils/fonts-noto-cjk）。
+- 修复 3 处 clippy 风格告警，1 处压缩代码 possible_missing_else 豁免；成员端/组长端/无桌面核心三种配置 clippy 0 警告，测试 26/29/26 通过。
+- 版本 0.7.2，双端与 deb 重建；deb 安装/无头启动/卸载保留数据复验，Windows 发布目录双端启动正常。
+
+## 0.7.1 附：WAL 实时读取回归与交付复核
+
+- 新增实时 WAL 测试：写入连接保持打开、记录仅在 `-wal` 时采集仍能读到（复制 db+wal+shm 的快照逻辑得到验证）；成员端 26 项/组长端 29 项/无桌面核心 26 项通过。
+- 静态检查：全部 `.ps1` 通过 PowerShell 解析器、全部 `.sh` 通过 `bash -n`。
+- 交付物复核：Windows 安装包 FileVersion/ProductVersion=0.7.1；deb Package/Version/Architecture/Depends 正确、`ldd` 无缺失库；源码包 97 个条目，解压后 clean-room 无桌面核心 26 项测试通过、示例构建通过。
+
+## 0.7.1 Trae 导出多会话拆分
+
+- 单个 JSON/JSONL 文件中多条会话记录（社区工具解密导出 data dump 常见）按 session_id/标题拆分为独立会话，不再合并；支持 messages/raw_messages 嵌套、list/sessions/conversations 包装、JSONL 每条记录一个会话；标题优先 session_title/title、其次首条用户消息；来源 id 稳定且互不重复。单会话文件行为不变。
+- 新增 3 项回归（JSON dump 多会话、JSONL 分组、无 id 的 list 包装），成员端 25 项/组长端 28 项/无桌面核心 25 项通过；隔离 HTTPS verify_trae_import 扩展为 5 会话/10 事件，组长端校验通过。
+- 版本 0.7.1，双端与 deb 重建。真实 Trae 导出样本仍待提供。
+
+## 0.7.0 最终回归（交付前复核）
+
+- 成员端 22 项、组长端 25 项、无桌面核心 22 项库回归通过；verify_multi_source / verify_selection / verify_trae_import 三条隔离 HTTPS 验收通过。
+- 真实本机 DSH/Codex 只读探针：7 会话、2611 事件、内部记录泄漏 0（约 2.0 秒，不落盘不上传）。
+- 前端 TypeScript/Vite 构建通过；ci.yml / release.yml 用 PyYAML 解析通过（CI 5 任务、Release 2 任务）；交付物 SHA-256 与 artifacts/*/SHA256.txt 一致。
+
+## 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
+
+- 在本机导入的 Ubuntu 24.04.5 + WSLg 环境中，用 xdotool 驱动交付的 0.7.0 成员端真实界面：绑定部门（X11 剪贴板粘贴邀请）→ 同意书 → 采集并选择会话（Codex/DSH/Trae 3 来源、3 会话/6 记录、脱敏预览）→ 确认上传；界面显示“已收到”。
+- 链路：WSL 不能直连 Windows，用 Windows→WSL SSH 反向隧道，邀请地址 `https://127.0.0.1:18511`→Windows 组长 18510，TLS 与指纹端到端；给验收示例加了 `--advertised-port`（仅测试工具）。组长端 `leader.validate_capture` 通过：protocol 1、3 会话/6 事件、codex/dsh/trae 各 2。
+- 证据 `artifacts/acceptance/linux-gui-flow/20261112-194826`（01–09 截图、leader/tunnel 日志、environment.txt、复现脚本）。边界：合成数据；验收组长示例写结果后退出，界面出现离线缓存提示；最小镜像缺彩色 emoji 字体。
+
+## 0.7.0 附：Windows 成员端界面全流程（UIA 驱动）
+
+- 用 UI Automation 在真实 Windows 桌面驱动 0.7.0 成员端：绑定部门（ValuePattern 粘贴邀请）→ 同意并绑定 → 采集并选择会话（真实选择器展示 Codex/DSH/Trae 三来源、3 会话/6 记录、Trae 脱敏提示）→ 确认上传 3 个会话；组长端（`verify_cross_platform_leader`，当前源码重建）校验通过（protocol 1、3 会话/6 事件），成员状态 🟢 已收到。
+- 发现并修复：此前验收用的组长示例二进制是旧版本，缺 0.6.1 的 `说明：` 分类，导致状态显示“采集异常”；重建后一致。
+- 证据 `artifacts/acceptance/gui-flow/20261112-194009`（01–06 截图、UIA 名称、summary/leader 结果、environment.txt）。全部合成数据，无模型调用。
+
+## 0.7.0 附：Windows/Ubuntu 界面与来源对话框验证
+
+- Windows 发布目录成员端（0.7.0，隔离数据目录）：PrintWindow 截窗口 + UI Automation 调用“记录来源”按钮，找到 Codex、DeepSeek Harness、Trae 本地记录、Trae 导出四项；截图与 `uia-check.txt` 在 `artifacts/acceptance/windows-ui-0.7.0`。本机检测到 `C:\Users\Kaltsit\.codex`、`.dsh`，Trae 显示未安装提示。
+- Ubuntu 24.04 WSLg：xdotool 点击“记录来源”后截弹窗，同样显示四项来源（`member-source-dialog-ubuntu2404.png`）。
+- 边界：无 Trae 安装/样本、未调用模型；Windows NSIS 安装/卸载未在本机执行（用发布二进制）。
+
+## 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
+
+- 用户工作区 24.04 无 sudo/WebKitGTK，改用本机 WSL2 导入独立 Ubuntu 24.04.5 cloud-image 发行版（F:\WSL\Ubuntu2404，非 22.04 构建环境），WSLg 1.0.71（Wayland + XWayland）。
+- 交付的 0.7.0 deb 用 apt 安装成功（自动补 WebKitGTK 4.1 2.52.6、AppIndicator、Noto CJK）；XWayland 下渲染 “Codex 工作日报 · 成员端” 1120x820 窗口，截图为真实界面；数据 0700、无启动错误；DBus 会话内单实例生效；Wayland 后端也能启动（WSLg 不支持 wlr-screencopy 故无 Wayland 截图）；Xvfb 复现截图。
+- 证据 `artifacts/acceptance/ubuntu-2404-gui`。边界：非物理显示器/GNOME 面板，托盘图标未展示；HiDPI/多显示器/硬件 GPU 未验证。无代码改动，仅验证与文档。
+
+## 0.7.0 Trae 本地明文记录来源
+
+- 依据 0.6.2 调研：国际版 Trae 明文 `state.vscdb` 可自动读取。新增 `collector/trae_local.rs`：递归扫描 `%APPDATA%\Trae\User\workspaceStorage`（Linux 为 `$XDG_CONFIG_HOME/Trae/User/workspaceStorage`）下的 `state.vscdb`；复制库与 `-wal`/`-shm` 到临时目录后只读打开，规避 WAL 一致性；读取 `ItemTable` 中聊天存储键（`memento/icube-ai-agent-storage`、`icube-ai-*chat-storage*`、`chat.ChatSessionStore.index`），只解析含 `messages` 的会话，取 user/assistant 可见 `content`/`parsedQuery` 文本，目标日逐条过滤，无时间戳按文件日期计入并给 `说明：` 提示；加密/损坏库跳过并提示改用导出导入；文件数上限 200、单库上限 200MB、mtime 预筛。
+- 成员端来源扩展为四项：Codex、DeepSeek Harness、Trae 本地记录、Trae 导出；Trae 本地记录在默认目录存在时默认启用，可关闭或自定义目录。UI 文案、同意书与 SECURITY 同步。
+- 验证：成员端 22 项、无桌面核心 22 项、组长端 25 项通过（新增 5 项本地记录用例）；隔离 HTTPS `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源（3 会话/6 事件，组长端校验通过）；既有回归与前端构建通过。
+- 版本 0.7.0，双端与 deb 重建。真实 Trae 安装验证仍需在用户机器上补；Trae CN 仍走导出导入。
+
+## 0.6.2 Trae 数据结构调研与解析增强
+
+- 通过 `git` 访问 GitHub（本机 web_fetch 受限但 git 可用），调研公开 Trae 数据工具：trae-db-decrypt、trae-history、ai-data-extraction 及官方论坛帖。
+- 结论：Trae 国际版聊天在 `%APPDATA%\Trae\User\workspaceStorage\<id>\state.vscdb`（明文 SQLite，ItemTable 键 `inputHistory`/`ChatStore`/`memento/icube-ai-agent-storage`）；Trae CN 在 `%APPDATA%\Trae CN\ModularData\ai-agent\database.db`（SQLCipher 4，密钥需从进程内存扫描获取，社区脚本实现；近期版本有官方“导出历史对话”）。CN 表结构：chat_session/history_v2（`messages` 为 `raw_messages` JSON），时间为 Unix 秒。
+- 决策：成员端不读取 CN 加密库、不做内存扫描（越权/隐私风险），继续官方导出导入；国际版明文 vscdb 自动读取需真实样本确认 ItemTable 结构后再评估。
+- 解析增强：Trae JSON 导入支持 `raw_messages`/`sessions`/`history_v2` 包装、记录级时间继承、包装标题、推理块剔除；新增 2 项回归（共 17 项）。
+- 探针更新：默认复制国际版工作区 state.vscdb 与 CN database.db + WAL/SHM；全局状态（可能含令牌）默认跳过；分类区分 sqlite-plaintext/encrypted/json-text。合成目录自测通过，证据 `artifacts/acceptance/trae-probe-selftest`。
+- 版本 0.6.2，双端与 deb 重建。Trae 真实样本仍需用户提供。
+
+## 0.6.1 真实 Ubuntu 跨端验收（用户提供工作区）
+
+- 用户提供独立 Ubuntu 24.04.4 工作区（SSH：worker@192.168.5.113:22002），本机无 sudo、无 WebKitGTK 运行时，但有 gcc/rustup 网络。
+- 把 Tauri 桌面外壳改为可选 `desktop` feature（默认开启）；`--no-default-features` 在 Ubuntu 24.04 上构建采集/上传核心，避免安装 WebKitGTK。用户态解包 libssl-dev 3.0.13 头文件解决链接，未改系统。
+- 真实跨端：Ubuntu 成员端二进制经 SSH 反向转发连接本机 Windows 组长端（真实 leader HTTPS + 证书指纹），配对→Codex/DSH/Trae 三来源采集→上传→状态查询全部成功；组长端 `leader.validate_capture` 通过（3 会话/8 事件，protocol 1，时区/day 合法）。证据 `artifacts/acceptance/cross-platform-real`。
+- Ubuntu 24.04 上 15 项采集回归通过。
+- 修复 Trae 缺时间戳提示误标“采集异常”：提示加 `说明：` 前缀，组长端分类忽略该类提示（新增 2 项单测，组长端 18 项）；真正缺口仍标记。
+- 版本 0.6.1，CI 增加无桌面核心回归；Trae 真实样本仍待用户提供，Linux 桌面窗口仍未在该机验收（无 WebKitGTK/sudo）。
+
+## 0.6 Trae 导出导入
+
+- 需求：Trae 安装在 Windows，本地对话在加密 SQLite 库中，样本尚未提供。先把"官方导出导入"打通：成员在 Trae 中导出对话文件，选择其所在目录后与 Codex/DSH 一起采集；自动读取加密库待样本后评估。
+- 采集层新增 `collector/trae.rs`：扫描导出目录（md/txt/json/jsonl，单文件上限 20MB），Markdown 按角色段落（用户/助手/系统/工具调用/工具结果，标题严格匹配避免把会话标题当角色）解析，JSON/JSONL 按消息数组/对象（role+content+时间戳）解析；系统段落与导出元数据剔除；缺时间戳按文件日期计入并告警；会话 ID 用相对路径哈希，会话标题取首个非角色标题或文件名。
+- 成员端来源配置扩展为 codex/dsh/trae 三项；Trae 来源默认关闭且必须选择导出目录才能启用；会话列表/预览/来源筛选自动适配。
+- 新增 6 项 Trae 解析回归与隔离 HTTPS 验收 `verify_trae_import`（Trae+Codex 合并采集上传、组长端快照校验、系统段落/元数据不出现）；既有 multi-source 与 selection 验收回归通过。
+- 版本 0.6.0：双端与 Ubuntu deb 重建；提示词未改（personal.v3/extract.v2 已覆盖只有对话、无工具结果的来源）。真实 Trae 样本仍未验证。
+
+## 0.5 Ubuntu 成员端
+
+- 需求确认：Linux 只做成员端，组长端继续 Windows x64。
+- 平台层拆分：`common.rs` 的 DPAPI/MoveFileEx 按平台实现（Linux 使用 AES-256-GCM，密钥由机器标识和登录用户派生，凭据文件 0600；原子 rename 替换）；`lib.rs` 使用 XDG 数据目录与 `xdg-open`，Linux 用单实例插件让再次启动恢复隐藏窗口，托盘构建失败只写提示不阻止启动；`main.rs` 的单实例互斥仅 Windows；`member_capture` 的选择记忆键仅 Windows 转小写；`member.rs` 设备名跨平台。
+- Cargo：`windows`、`webview2-com`、`p12` 移到 Windows 目标依赖；Linux 增加 `aes-gcm` 与 `tauri-plugin-single-instance`；`build.rs` 的 manifest 链接参数仅 Windows。
+- 打包：`tauri.conf.json` 增加 PNG 图标与 `linux.deb.depends`（WebKitGTK 4.1、GTK3、AppIndicator、libssl3、xdg-utils、fonts-noto-cjk）；新增 `scripts/build-linux-member.sh`；CI 增加 ubuntu-22.04 成员端任务，发布流程增加成员端 deb。
+- 文档：README/INTEGRATION/SECURITY/CONTRIBUTING 增加 Linux 安装、数据目录、凭据与构建说明；UI 字体增加 Noto CJK 回退。
+- 验证：WSL Ubuntu 22.04 上库回归、Release 构建、deb 打包与 Xvfb 无头启动通过；交付的 deb 用 `apt install` 实际安装成功并用已安装二进制无头启动。跨端协议分两端验证：Linux 成员端对真实 HTTPS 监听器完成配对/采集/上传/状态查询（错误指纹被拒），Linux 采集的 capture 通过真实 Windows 组长端上传校验；本机 WSL↔Windows 网络被防火墙拦截，跨端网络级实机配对留待真实环境。Windows 双端重建与既有回归不变。详见 `VALIDATION.md`。
+
+## 0.4 多来源采集（Codex + DeepSeek Harness）
+
+- 需求经用户确认：Linux 版本只做成员端；Trae 安装在 Windows、本地数据样本待提供；DSH 部门成员普遍使用，只读本地会话文件可接受；单条记录设上限；顺序 0.4 多来源 → 0.5 Linux 成员端 → Trae。
+- 采集层重构为 `collector` 编排 + `collector/codex.rs` + `collector/dsh.rs`。Codex 逻辑与事件 ID 保持不变，新增按文件修改时间跳过不可能含当日事件的日志（本机实测采集从约 8 秒降到约 1 秒）。
+- DSH 读取 `$DSH_HOME`（默认 `~/.dsh`，可自定义）下的 `sessions/--<cwd>--/<session-id>/session.vN.jsonl[.zstd]`，选择最高代际，仅解析当前 v4（Zstandard 多帧或 compression:none）。可见映射：`user/message`（仅 source.kind=user/agent-message）、`assistant/message` 的 text 块、`tool/call`、`tool/result`；排除 system/message、request/*、agent/inbox/spliced、title LLM、delivery、permission/sandbox/approval/turn/step 等内部记录。继承会话按最后带标记的 `session/end-seed` 跳过历史，缺少截点时整会话跳过并告警；旧格式 v0–v3 与较新版本跳过，仅当文件当日被修改才提示，避免历史会话长期误报；尾部半帧容错。
+- 单条事件文本超过 200000 字符截断并在正文标注，采集说明同时注明上限；本机完整日志不改动。
+- 成员端新增 `member.sources`、`sources.json`、`member.init.sources`；`member.codexRoot` 保留为兼容操作（仅启用 Codex）。会话选择记忆仍以 Codex 路径为键，升级后旧选择保留，新来源会话默认不选。
+- 会话 ID：Codex 保持原值，DSH 使用 `dsh:<id>`；会话与事件新增 `tool`/`toolLabel`，capture 新增 `sources` 摘要。协议仍为 1，旧组长端忽略新增字段。
+- UI：记录来源对话框（启用/自定义目录）、会话列表来源筛选与标签、预览显示来源、采集说明列出来源、配对同意书更新数据范围。
+- 提示词：新增 `personal.v3`、`extract.v2` 说明多来源；`build.rs`、`common.rs`、`leader_runtime.rs` 更新提示词版本。`department.v2`、`merge.v1` 未改；提示词仅验证资源加密/解密与构建，本轮未调用模型。
+- 验收：9 项库回归；真实本机 DSH+Codex 只读探针（6 会话、1083 事件、内部记录泄漏 0、约 1.1 秒）；隔离 HTTPS 多来源上传与组长端快照校验；选择流程回归；前端构建；Windows 双端 0.4.0 安装包重建。证据见 `VALIDATION.md` 与 `artifacts/acceptance/multi-source`。
+
 ## 0.3.6 成员补充版本冲突
 
 - 已确认 HTTP 409 来自旧正文/来源补充提交；本机缓存显示日报来源为第2次提交、当前记录为第7次提交，未有对应新版日报。成员界面只检查定稿状态，未同步阻止旧来源提交。

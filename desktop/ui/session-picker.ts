@@ -14,15 +14,17 @@ export async function selectSessions(day: string): Promise<SubmissionResult | nu
   let submission: SubmissionResult | null = null;
   let saveMessage = '选择仅保存在本机', actionError = '';
 
-  const dialog = showModal('选择要上传的会话', `<div class="capture-heading"><div><strong id="capture-date"></strong><p id="capture-cutoff" class="muted"></p><p class="muted">当前内容已脱敏。确认后仅上传所选会话，新增记录需刷新采集。</p></div><button type="button" id="capture-recollect">刷新采集</button></div><div id="capture-warnings"></div><div class="capture-layout"><section class="capture-sidebar" aria-label="会话选择"><label class="sr-only" for="capture-search">搜索会话或项目</label><input id="capture-search" type="search" placeholder="搜索会话或项目"><label class="sr-only" for="capture-project">按项目筛选</label><select id="capture-project"></select><div class="capture-list-tools"><button type="button" id="capture-select-all">全选当前列表</button><button type="button" id="capture-select-none">取消当前列表</button></div><div id="capture-list" class="capture-list"></div></section><section id="capture-preview" class="capture-preview" aria-label="待上传内容预览"></section></div><div class="capture-footer"><div><strong id="capture-selected-count"></strong><small id="capture-save-state" class="muted"></small></div><div class="button-group"><button type="button" id="capture-cancel">取消</button><button type="button" id="capture-confirm" class="primary"></button></div></div>`, true);
+  const dialog = showModal('选择要上传的会话', `<div class="capture-heading"><div><strong id="capture-date"></strong><p id="capture-cutoff" class="muted"></p><p class="muted">当前内容已脱敏。确认后仅上传所选会话，新增记录需刷新采集。</p></div><button type="button" id="capture-recollect">刷新采集</button></div><div id="capture-warnings"></div><div class="capture-layout"><section class="capture-sidebar" aria-label="会话选择"><label class="sr-only" for="capture-search">搜索会话或项目</label><input id="capture-search" type="search" placeholder="搜索会话或项目"><label class="sr-only" for="capture-source">按来源筛选</label><select id="capture-source"></select><label class="sr-only" for="capture-project">按项目筛选</label><select id="capture-project"></select><div class="capture-list-tools"><button type="button" id="capture-select-all">全选当前列表</button><button type="button" id="capture-select-none">取消当前列表</button></div><div id="capture-list" class="capture-list"></div></section><section id="capture-preview" class="capture-preview" aria-label="待上传内容预览"></section></div><div class="capture-footer"><div><strong id="capture-selected-count"></strong><small id="capture-save-state" class="muted"></small></div><div class="button-group"><button type="button" id="capture-cancel">取消</button><button type="button" id="capture-confirm" class="primary"></button></div></div>`, true);
   dialog.classList.add('capture-dialog');
 
   const sessionName = (session: CaptureSession): string => session.title || session.id;
+  const sessionTool = (session: CaptureSession): string => session.toolLabel || '';
   const selectedIds = (): string[] => draft.sessions.filter(session => selected.has(session.id)).map(session => session.id);
   const filtered = (): CaptureSession[] => {
     const search = el<HTMLInputElement>('capture-search').value.trim().toLocaleLowerCase();
+    const tool = el<HTMLSelectElement>('capture-source').value;
     const project = el<HTMLSelectElement>('capture-project').value;
-    return draft.sessions.filter(session => (!project || session.project === project) && (!search || `${sessionName(session)} ${session.project}`.toLocaleLowerCase().includes(search)));
+    return draft.sessions.filter(session => (!tool || session.tool === tool) && (!project || session.project === project) && (!search || `${sessionName(session)} ${session.project} ${sessionTool(session)}`.toLocaleLowerCase().includes(search)));
   };
   function footer(): void {
     const count = selected.size;
@@ -54,7 +56,7 @@ export async function selectSessions(day: string): Promise<SubmissionResult | nu
   function renderList(): void {
     const list = el('capture-list'), scroll = list.scrollTop;
     const visible = filtered();
-    list.innerHTML = visible.map(session => `<div class="capture-session ${session.id === activeId ? 'active' : ''} ${selected.has(session.id) ? 'selected' : ''}"><input type="checkbox" data-session-id="${esc(session.id)}" aria-label="选择会话：${esc(sessionName(session))}" ${selected.has(session.id) ? 'checked' : ''}><button type="button" data-preview-id="${esc(session.id)}" aria-pressed="${session.id === activeId}"><strong>${esc(sessionName(session))}</strong><small class="capture-project-name">${esc(session.project || '未标注项目')}</small><small>${esc(dateTime(session.firstAt, draft.timeZone))} — ${esc(dateTime(session.lastAt, draft.timeZone))}</small><span class="capture-session-tags"><span>${session.eventCount} 条记录</span>${session.isNew ? '<span class="capture-new">新增</span>' : ''}${session.warnings.length ? `<span class="danger-text">${session.warnings.length} 项采集提示</span>` : ''}</span></button></div>`).join('') || empty(draft.sessions.length ? '没有匹配的会话' : '未发现可选会话', draft.sessions.length ? '试试其他关键词或项目。' : '可以查看采集说明，或提交空记录。');
+    list.innerHTML = visible.map(session => `<div class="capture-session ${session.id === activeId ? 'active' : ''} ${selected.has(session.id) ? 'selected' : ''}"><input type="checkbox" data-session-id="${esc(session.id)}" aria-label="选择会话：${esc(sessionName(session))}" ${selected.has(session.id) ? 'checked' : ''}><button type="button" data-preview-id="${esc(session.id)}" aria-pressed="${session.id === activeId}"><strong>${esc(sessionName(session))}</strong><small class="capture-project-name">${esc(session.project || '未标注项目')}${sessionTool(session) ? ` · ${esc(sessionTool(session))}` : ''}</small><small>${esc(dateTime(session.firstAt, draft.timeZone))} — ${esc(dateTime(session.lastAt, draft.timeZone))}</small><span class="capture-session-tags"><span>${session.eventCount} 条记录</span>${session.isNew ? '<span class="capture-new">新增</span>' : ''}${session.warnings.length ? `<span class="danger-text">${session.warnings.length} 项采集提示</span>` : ''}</span></button></div>`).join('') || empty(draft.sessions.length ? '没有匹配的会话' : '未发现可选会话', draft.sessions.length ? '试试其他关键词或项目。' : '可以查看采集说明，或提交空记录。');
     list.scrollTop = scroll;
   }
   async function preview(id: string): Promise<void> {
@@ -73,7 +75,7 @@ export async function selectSessions(day: string): Promise<SubmissionResult | nu
         const content = `<pre class="capture-event-text">${esc(event.text)}</pre><small class="capture-event-source">${esc(event.source)}</small>`;
         return event.kind.startsWith('tool_') ? `<details class="capture-event capture-tool"><summary>${heading}<span>展开完整内容</span></summary>${content}</details>` : `<article class="capture-event"><header>${heading}</header>${content}</article>`;
       }).join('');
-      panel.innerHTML = `<div class="capture-preview-heading"><div><h3>${esc(sessionName(session))}</h3><p class="muted">${esc(session.project || '未标注项目')}</p></div><span id="capture-preview-selection"></span></div>${result.warnings.length ? `<div class="notice capture-session-warnings">${result.warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}<div class="capture-events" aria-label="只读会话记录">${events || empty('该会话没有可上传事件', '采集提示仍会随选中的会话保留。')}</div>`;
+      panel.innerHTML = `<div class="capture-preview-heading"><div><h3>${esc(sessionName(session))}</h3><p class="muted">${esc(session.project || '未标注项目')}${sessionTool(session) ? ` · ${esc(sessionTool(session))}` : ''}</p></div><span id="capture-preview-selection"></span></div>${result.warnings.length ? `<div class="notice capture-session-warnings">${result.warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}<div class="capture-events" aria-label="只读会话记录">${events || empty('该会话没有可上传事件', '采集提示仍会随选中的会话保留。')}</div>`;
       panel.scrollTop = 0; footer();
     } catch (error) {
       if (alive && request === previewRequest) panel.innerHTML = `<div class="notice error-notice">${esc(String(error))}</div>`;
@@ -87,6 +89,11 @@ export async function selectSessions(day: string): Promise<SubmissionResult | nu
     const project = el<HTMLSelectElement>('capture-project'), previous = project.value;
     project.innerHTML = `<option value="">全部项目</option>${projects.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('')}`;
     if (projects.includes(previous)) project.value = previous;
+    const tools = [...new Map(draft.sessions.filter(session => session.tool).map(session => [session.tool!, sessionTool(session) || session.tool!])).entries()];
+    const source = el<HTMLSelectElement>('capture-source'), previousSource = source.value;
+    source.innerHTML = `<option value="">全部来源</option>${tools.map(([tool, label]) => `<option value="${esc(tool)}">${esc(label)}</option>`).join('')}`;
+    source.hidden = tools.length <= 1;
+    source.value = tools.some(([tool]) => tool === previousSource) ? previousSource : '';
     renderList(); footer(); void preview(activeId);
   }
   const changeSelection = (choose: boolean): void => {
@@ -94,6 +101,7 @@ export async function selectSessions(day: string): Promise<SubmissionResult | nu
     renderList(); saveSelection();
   };
   el('capture-search').addEventListener('input', renderList);
+  el('capture-source').addEventListener('change', renderList);
   el('capture-project').addEventListener('change', renderList);
   el('capture-select-all').addEventListener('click', () => changeSelection(true));
   el('capture-select-none').addEventListener('click', () => changeSelection(false));

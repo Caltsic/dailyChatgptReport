@@ -480,12 +480,17 @@ impl Leader {
         );
         Ok(())
     }
+    /// Acceptance hook: run exactly the checks used by the member upload route.
+    pub fn validate_capture_value(&self, capture: &Value) -> Result<()> {
+        self.validate_capture(capture)
+    }
     fn load_capture(&self, snap: &Value) -> Result<Value> {
         load_capture_at(&self.store.root, snap)
     }
     fn action(&self, op: &str, mid: &str, day: &str, reason: &str) -> Result<()> {
         self.store.write(|c|{member(c,mid)?;if op=="leader.revoke"{for mut d in all(c,"Device",None)?.into_iter().filter(|v|s(v,"memberId")==mid){d["revoked"]=json!(true);put(c,"Device",s(&d,"id"),&d,"")?;}return audit(c,"撤销设备",mid);}day_check(day)?;match op {"leader.release"=>{let mut r=latest(c,"Report",mid,day)?.ok_or_else(||anyhow!("报告不存在"))?;current(c,&r)?;if r["releasedAt"].is_null(){r["releasedAt"]=json!(common::now());put(c,"Report",s(&r,"id"),&r,day)?;}audit(c,"下发报告",s(&r,"id"))},"leader.reopen"=>{let key=format!("{mid}:{day}");put(c,"DayState",&key,&json!({"id":key,"memberId":mid,"day":day,"closed":false}),day)?;audit(c,"重新开启日报",&key)},"leader.resubmit"=>{open(c,mid,day)?;ensure!(!reason.trim().is_empty()&&reason.chars().count()<=1000,"请填写 1–1000 字重交原因");let id=common::id();put(c,"Notice",&id,&json!({"id":id,"memberId":mid,"day":day,"reason":reason.trim(),"createdAt":common::now(),"fulfilled":false}),day)?;audit(c,"要求重交",&format!("{mid}:{day}"))},_=>bail!("未知操作")}})
     }
+    #[allow(clippy::possible_missing_else)]
     fn queue(&self, kind: &str, mid: &str, day: &str) -> Result<Value> {
         self.store.write(|c|{day_check(day)?;let mut sid=String::new();if kind=="personal" {member(c,mid)?;open(c,mid,day)?;sid=s(&latest(c,"Snapshot",mid,day)?.ok_or_else(||anyhow!("尚无提交记录"))?,"id").to_owned();ensure!(!notices(c,mid,day)?,"成员尚未按要求重新提交");}if let Some(j)=all(c,"Job",Some(day))?.into_iter().find(|v|s(v,"kind")==kind&&s(v,"memberId")==mid&&pending(v)){return Ok(j);}let id=common::id();let j=json!({"id":id,"kind":kind,"day":day,"memberId":mid,"snapshotId":sid,"state":"queued","createdAt":common::now(),"error":null,"progress":null});put(c,"Job",&id,&j,day)?;Ok(j)})
     }
@@ -653,6 +658,17 @@ pub(crate) fn dotnet_json(v: &Value) -> Result<String> {
     })
 }
 
+/// Collection warnings that describe known, expected limits are prefixed `说明：` and do
+/// not mark a submission as an anomaly; real collection gaps keep the warning badge.
+fn collection_problem(warnings: &[Value]) -> bool {
+    warnings.iter().any(|warning| {
+        let text = warning.as_str().unwrap_or("");
+        !text.starts_with("仅覆盖本机")
+            && !text.starts_with("未发现可用工作记录")
+            && !text.starts_with("说明：")
+    })
+}
+
 impl Leader {
     fn row(&self, c: &Connection, mid: &str, day: &str) -> Result<Value> {
         let m = member(c, mid)?;
@@ -669,12 +685,10 @@ impl Leader {
                 .then_with(|| job_time(b).cmp(job_time(a)))
         });
         let j = jobs.first().cloned().unwrap_or(Value::Null);
-        let problem = snap["warnings"].as_array().is_some_and(|a| {
-            a.iter().any(|w| {
-                !w.as_str().unwrap_or("").starts_with("仅覆盖本机")
-                    && !w.as_str().unwrap_or("").starts_with("未发现可用工作记录")
-            })
-        });
+        let problem = snap["warnings"]
+            .as_array()
+            .map(|warnings| collection_problem(warnings))
+            .unwrap_or(false);
         let submission = if notice {
             "🟡 待重交"
         } else if snap.is_null() {
@@ -877,5 +891,29 @@ fn brief(j: &Value) -> String {
             s(&j["progress"], "activity")
         ),
         _ => "—".into(),
+    }
+}
+
+#[cfg(test)]
+mod warning_tests {
+    use super::collection_problem;
+    use serde_json::json;
+
+    #[test]
+    fn informational_warnings_do_not_flag_an_anomaly() {
+        assert!(!collection_problem(&[]));
+        assert!(!collection_problem(&[
+            json!("仅覆盖本机可读取的当日事件；跨日上下文、附件及外部文件未采集。"),
+            json!("说明：Trae 导出：1 个导出文件缺少逐条时间戳，已按文件日期计入"),
+            json!("未发现可用工作记录；不代表当天没有工作"),
+        ]));
+    }
+
+    #[test]
+    fn real_collection_gaps_still_flag_an_anomaly() {
+        assert!(collection_problem(&[json!(
+            "DeepSeek Harness：跳过旧版会话格式 v3（sessions/--demo--/session-x/session.v3.jsonl.zstd），仅采集 v4"
+        )]));
+        assert!(collection_problem(&[json!("Trae 导出：1 个导出文件未识别到对话内容")]));
     }
 }

@@ -24,8 +24,14 @@ struct SubmittedCapture {
 
 fn context(pairing: &Value, day: &str, root: &Path) -> String {
     let root = root.canonicalize().unwrap_or_else(|_|root.to_owned());
+    // Preserve the existing Windows case-insensitive key so day-selection memory survives
+    // the upgrade; Linux paths are case-sensitive and keep their exact form.
+    #[cfg(windows)]
+    let root_key = root.to_string_lossy().to_lowercase();
+    #[cfg(not(windows))]
+    let root_key = root.to_string_lossy().to_string();
     hash(&json!({"department":pairing["identity"]["departmentId"],"member":pairing["identity"]["memberId"],
-        "day":day,"zone":pairing["identity"]["timeZone"],"root":root.to_string_lossy().to_lowercase()}).to_string())
+        "day":day,"zone":pairing["identity"]["timeZone"],"root":root_key}).to_string())
 }
 
 impl CaptureDraft {
@@ -60,7 +66,7 @@ impl CaptureDraft {
                 warnings.extend(session["warnings"].as_array().unwrap().iter().filter_map(Value::as_str).map(str::to_owned));
             }
         }
-        let mut scope = "仅覆盖本机所选会话的当日事件；本次报告仅包含员工选择上传的会话；跨日上下文、附件及外部文件未采集。".to_owned();
+        let mut scope = format!("仅覆盖本机所选会话的当日事件；本次报告仅包含员工选择上传的会话；跨日上下文、附件及外部文件未采集；{}。", collector::TRUNCATION_NOTE);
         if intentional_empty { scope.push_str("本次未选择上传会话，不代表当天没有工作。"); }
         else if events.is_empty() { warnings.push("未发现可用工作记录；不代表当天没有工作".to_owned()); }
         warnings.push(scope);
@@ -68,7 +74,8 @@ impl CaptureDraft {
         warnings.retain(|w|seen.insert(w.clone()));
         // Local titles, project paths, excluded sessions and their diagnostics never enter this object.
         json!({"day":source["day"],"timeZone":source["timeZone"],"capturedAt":source["capturedAt"],
-            "events":events,"warnings":warnings,"sessionCount":count,"protocol":source["protocol"]})
+            "events":events,"warnings":warnings,"sessionCount":count,"protocol":source["protocol"],
+            "sources":source["sources"]})
     }
 }
 
@@ -76,8 +83,11 @@ impl MemberClient {
     pub(super) async fn collect_draft(&self, day: &str) -> Result<Value> {
         let pairing = self.require_pairing()?;
         let zone = identity_part(&pairing,"timeZone");
-        let root = self.codex_root();
-        let key = context(&pairing,day,&root);
+        let roots = self.source_roots()?;
+        let key = context(&pairing,day,&self.codex_root());
+        if roots.codex.is_none() && roots.dsh.is_none() {
+            bail!("尚未启用任何记录来源，请先在“记录来源”中选择要采集的本机目录");
+        }
         let memory_path = self.root.join("session-selection").join(format!("{key}.secret"));
         let mut memory: SelectionMemory = if memory_path.exists() {
             serde_json::from_str(&read_secret(&memory_path)?).context("本日会话选择记录无法读取")?
@@ -85,7 +95,7 @@ impl MemberClient {
         let first = !memory_path.exists();
         let mut guard = self.capture.lock().await;
         let day = day.to_owned();
-        let capture = tokio::task::spawn_blocking(move || collector::collect_for_selection(&root,&day,&zone)).await??;
+        let capture = tokio::task::spawn_blocking(move || collector::collect_for_selection(&roots,&day,&zone)).await??;
         let mut sessions = capture.sessions.clone();
         for session in &mut sessions {
             let sid = text(session,"id").to_owned();

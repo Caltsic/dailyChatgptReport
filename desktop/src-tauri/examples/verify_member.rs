@@ -71,6 +71,7 @@ async fn main() -> Result<()> {
     member
         .dispatch("member.codexRoot", json!({"path":codex_root}))
         .await?;
+    support::codex_only(&member, &codex_root).await?;
     let submission = support::submit_selected(&member, &day).await?;
     ensure!(
         submission["received"] == true && submission["eventCount"] == 1,

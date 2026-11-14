@@ -4,21 +4,21 @@
 [![最新版本](https://img.shields.io/github/v/release/Caltsic/dailyChatgptReport?display_name=tag)](https://github.com/Caltsic/dailyChatgptReport/releases)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Windows x64 双端软件，每个部门独立运行。成员采集并上传本机 Codex 记录，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
+Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness、国际版 Trae 本地明文记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
 
-这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。
+这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。成员端只读取已启用的本机来源；系统提示、内部推理和内部记录不采集，未安装的来源自动跳过。
 
-当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
+当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.3.6（2026-11-11）**。本次成员端修正旧日报提交补充时的版本冲突：来源已更新时明确提示等待组长生成新版，补充可继续保存为草稿；新版到达后保留最新输入，由成员复核再提交。组长端保留 0.3.5 的长记录分段并行分析、分片进度和失败续跑，版本号随本次统一发布。两端采用 Tauri 2 + TypeScript 界面、Rust 本地业务。升级前从托盘退出旧端，再运行新安装包；原部门、配对、队列、草稿和报告数据继续使用。
+当前版本：**组长端和成员端 0.7.3（2026-11-13）**。本次修复组长端“测试已保存模型配置”总报 `AttributeError: 'str' object has no attribute 'get'` 的问题：连接测试传给报告 Agent 的是纯字符串输入，收尾生成采集范围摘要时假定为对象而报错；现已按 0 条事件/报告处理，与网关地址、模型和接口格式无关。其他功能与 0.7.2 相同。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
-1. 组长运行 `CodexDailyReport.Leader.Setup.exe`，成员运行 `CodexDailyReport.Member.Setup.exe`。安装位置可选，使用 NSIS 安装器。组长包包含 Python Agent；两端均不携带 .NET、Playwright 或独立 Chromium。复用系统 WebView2，缺少时安装器联网补齐。无需安装 Python 或 Microsoft Office。
+1. 组长运行 `CodexDailyReport.Leader.Setup.exe`，Windows 成员运行 `CodexDailyReport.Member.Setup.exe`，Ubuntu 成员安装 `CodexDailyReport.Member.deb`（`sudo apt install ./CodexDailyReport.Member.deb`，会自动安装 WebKitGTK 4.1、GTK3、AppIndicator、Noto CJK 字体等依赖）。安装位置可选，Windows 使用 NSIS 安装器。组长包包含 Python Agent；Windows 端不携带 .NET、Playwright 或独立 Chromium，复用系统 WebView2；Ubuntu 端复用系统 WebKitGTK。无需安装 Python 或 Microsoft Office。
 2. 组长配置部门名称、时区、接收地址，以及模型 API Base URL、API Key、模型名称，保存后测试连接。Base URL 形如 `https://provider.example/v1`，接口为 OpenAI 兼容 Chat Completions。
 3. 成员通过内网或 VPN 访问组长电脑，默认 HTTPS 端口为 18443。组长端自动识别当前有线/Wi-Fi 内网 IP；多网卡可从下拉框选择 VPN 地址，也可手动填写固定地址或主机名。旧版保存的 `localhost` 默认地址会自动纠正。创建邀请时自动模式重新检测 IP，邀请弹窗显示实际连接地址。组长电脑需允许接收端口入站；已配对电脑连接的地址发生变化后，重新生成邀请配对。
 4. 组长新增成员并创建配对邀请。成员核对部门、地址、证书指纹和上传范围后绑定。邀请 30 分钟有效、只可使用一次；重新配对同一成员会撤销旧设备。
-5. 成员选择日期，点击“采集并选择会话”，查看会话标题、项目、当日时间范围、事件数及告警。可搜索、按项目筛选和批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
+5. 成员选择日期，点击“采集并选择会话”，查看会话标题、来源、项目、当日时间范围、事件数及告警。可搜索、按来源和项目筛选、批量勾选，右侧预览脱敏后的完整采集内容，工具记录可展开。使用 Trae 时：国际版会在“记录来源”里自动出现“Trae 本地记录”（直接读取明文工作区）；Trae CN 或无法自动检测的版本，先在 Trae 中导出对话文件，再启用“Trae 导出”并选择导出目录。两类 Trae 会话都作为独立来源参与筛选和预览。点击确认后才上传所选会话；取消不会上传。同一日期记住勾选，再次采集时新发现的会话默认不选。收到组长端确认后显示提交成功；离线时只将已确认的所选内容保存在队列，连接恢复后重试。
 6. 组长选择成员生成日报，独立成员同时处理，生成成功后自动下发，成员上线同步即可查看。看板每行有“预览报告”，也可选中一人点击“预览选中报告”；生成任务完成后可直接预览本次生成版本。内置只读预览显示正文、表格、个人补充和来源，支持切换历史版本，预览无需等待补充或定稿。组长可查看 Agent 当前活动、已运行时间、已接收文字量和错误。排队或生成中可在成员行、部门汇总栏或任务详情点击“取消生成”；取消后显示“已取消”，已有报告保留，可重新生成。
 7. 成员阅读只读正文，填写并提交补充。没有补充时点击“确认无补充”，实际保存文字为 `无补充说明`；补充不可留空。
 8. 组长点击“导出 PDF”，得到规定 A4 版式的 PDF，并归档该版本。个人补充按原文附尾，标明作者、提交时间和正文版本。成员可下载自己的 PDF。
@@ -26,13 +26,13 @@ Windows x64 双端软件，每个部门独立运行。成员采集并上传本�
 
 成员重新上传记录后，旧日报仍可阅读，补充可编辑和保存草稿；需组长基于最新记录生成新版后才能提交补充。若点击提交时恰好发生版本变化，成员端保留草稿和被拒绝提交的原文，提示刷新复核。已被拒绝的版本冲突请求移至本机 `feedback-conflicts` 目录，不会继续重试旧正文，也不会自动附到新正文。
 
-组长本人可另装成员端，绑定自己的成员身份。关闭窗口后进入托盘继续运行；托盘“退出”停止同步。成员端只显示提交、复核和补充所需内容，不包含 Agent 或模型配置。
+组长本人可另装成员端，绑定自己的成员身份。关闭窗口后进入托盘继续运行；托盘“退出”停止同步。成员端只显示提交、复核和补充所需内容，不包含 Agent 或模型配置。Ubuntu 成员端关闭窗口后同样在后台继续同步，再次启动会恢复已隐藏的窗口；GNOME 默认不显示托盘图标时托盘菜单不可用，但再次启动仍可恢复窗口。
 
 安装器可输入程序安装路径或点击“浏览”选择文件夹；后续 Tauri 版本升级沿用安装位置。首次从 WPF 版迁移时建议使用新版默认目录，旧版可随后卸载。日报数据独立保存在用户数据目录，卸载程序不会删除它。
 
 ## 生成方式
 
-组长端通过本机 Python 子进程运行 LangGraph 分段流程，各模型节点使用 LangChain `create_agent`。个人日报和部门汇总分别使用 `personal.v2`、`department.v2` 系统提示词；长记录增加 `extract.v1` 证据提取和 `merge.v1` 事实核对提示词。
+组长端通过本机 Python 子进程运行 LangGraph 分段流程，各模型节点使用 LangChain `create_agent`。个人日报和部门汇总分别使用 `personal.v3`、`department.v2` 系统提示词；长记录增加 `extract.v2` 证据提取和 `merge.v1` 事实核对提示词。个人提示词说明多来源记录可能重复或深度不同，按实际事项合并整理。
 
 短记录直接成稿；超过容量规划值时，按会话和连续事件分段，分别提取事实，再核对同一会话的后续失败、更正和验证结果。成稿前将原始提取事实与压缩结果跨会话对照，补回遗漏的执行、更正及验证范围；来源事件时间用于核对先后，不作为工时。最后统一生成 Markdown 日报。超长单事件继续细分并保留原事件 ID 和字符范围。部门汇总按个人日报及其原文补充分组，保留作者和报告版本。分段结果使用带来源的内部证据结构，最终报告仍为 Markdown，由同一正文生成 PDF。
 
@@ -46,23 +46,26 @@ Windows x64 双端软件，每个部门独立运行。成员采集并上传本�
 
 连接或输出流中途断开、暂时限流时，使用框架内置重试并显示具体原因；重试只针对当前请求。认证等永久错误直接显示服务端原因，诊断信息会脱敏；半截输出不会作为正式报告。
 
-提示词源文件在 `prompts/personal.v2.txt`、`department.v2.txt`、`extract.v1.txt` 和 `merge.v1.txt`，修改后重新构建组长端才能生效。打包时加密为组长端资源，成员安装包不携带提示词或 API Key。组长和其电脑管理员是可信主体，资源加密不保证对管理员逆向保密。
+提示词源文件在 `prompts/personal.v3.txt`、`department.v2.txt`、`extract.v2.txt` 和 `merge.v1.txt`，修改后重新构建组长端才能生效。打包时加密为组长端资源，成员安装包不携带提示词或 API Key。组长和其电脑管理员是可信主体，资源加密不保证对管理员逆向保密。
 
 ## 记录与版本
 
-- 按部门时区和事件发生时间读取 `sessions`、`archived_sessions`，覆盖当天继续的旧会话。不主动读取项目文件、附件或凭据配置；不采集内部推理、系统及开发者指令。
+- 按部门时区和事件发生时间读取已启用来源的本机记录，覆盖当天继续的旧会话。Codex 读取 `sessions`、`archived_sessions`；DeepSeek Harness 读取其数据目录下的 `sessions`，也可在“记录来源”中指定自定义位置。不主动读取项目文件、附件或凭据配置；不采集内部推理、系统提示、开发者指令和注入型内部消息。
 - 支持 Codex 子代理的可见消息，保留作者与接收方；仅含加密内容的内部消息正常跳过。0.2.1 修复了这些消息在旧版被误报为不支持的情况；旧提交需由成员重新提交才能更新采集结果。
+- DeepSeek Harness 只读取当前 v4 会话格式；旧格式会话（v0–v3）和未来版本在采集时提示并跳过，可先在 DSH 中继续该会话再采集。子代理会话作为独立会话列出并标注父会话；继承（fork）会话按继承截点跳过已有历史，避免重复计入。不同来源的记录深度不同，缺失的工具结果或验证不作推断。
+- 单条记录超过 200000 字符时截断，正文保留原长度与保留长度标注，采集说明同时注明；本机完整日志不受影响。
 - 凭据检测后脱敏上传，检测不能覆盖所有秘密；配对时告知上传范围和模型处理去向。空记录表示未发现可用记录，不据此判断员工没有工作。
-- 确认上传使用当前预览的采集快照，不在确认或重试时重新读取日志。未勾选会话的正文、标题、项目路径和会话告警留在本机；全不选时可以提交，注明“本次未选择上传会话”，与未发现记录区分。同日选择按部门、成员、时区和日志目录分别记忆。
+- 确认上传使用当前预览的采集快照，不在确认或重试时重新读取日志。未勾选会话的正文、标题、项目路径和会话告警留在本机；全不选时可以提交，注明“本次未选择上传会话”，与未发现记录区分。同日选择按部门、成员和时区分别记忆，已启用的来源共用一次选择。
 - 重交要求包含原因，由成员手动再次提交。重新提交、生成正文均保留旧版本；新正文需要重新复核补充。
 - 已导出的归档不覆盖。后续更正由组长重新开启，生成新的报告版本。正文、补充或有效来源发生变化后，原部门汇总显示来源已更新。
 - 当前个人日报、部门汇总及历史汇总导出均只生成 PDF。旧版已生成的 Word 文件保留在原位置。
+- Trae 导出文件若包含多条会话记录（JSON 数组/JSONL data dump），会按 `session_id`/标题拆分为独立会话；Trae 有两类来源：**Trae 本地记录**读取国际版 Trae 明文工作区 `state.vscdb`（按目标日解析用户/助手可见消息，读取前复制库与 WAL/SHM 保证一致性；只读取聊天相关键，不读取 agent 工具明细或思考内容；加密/损坏库会提示改用导出导入）；**Trae 导出**支持手动导入 Markdown/TXT/JSON/JSONL，以及带 `raw_messages`/会话包装的 JSON（如解密后的 `history_v2` 记录，继承记录时间与标题，跳过推理块）。系统段落、导出元数据不采集；缺少逐条时间戳时按文件日期计入并在采集说明中提示；上传前请在预览中核对。Trae CN 加密数据库不直接读取、不扫描进程内存；可在安装了 Trae 的 Windows 电脑上运行 `scripts/probe-trae.ps1` 提供格式样本（脚本只在本地复制数据，不上传：默认复制工作区 `state.vscdb` 和 `database.db` 及 `-wal`/`-shm`，全局 `state.vscdb`/`storage.json` 可能含登录令牌，默认不复制）。
 
 ## 数据与备份
 
-成员默认数据目录为 `%LOCALAPPDATA%\CodexDailyReport\Member`，部门目录为 `%LOCALAPPDATA%\CodexDailyReport\Leader`。可用 `--data-dir "绝对路径"` 启动独立实例。
+成员默认数据目录为 `%LOCALAPPDATA%\CodexDailyReport\Member`，部门目录为 `%LOCALAPPDATA%\CodexDailyReport\Leader`；Ubuntu 成员端使用 `~/.local/share/CodexDailyReport/Member`（遵循 `$XDG_DATA_HOME`）。可用 `--data-dir "绝对路径"` 启动独立实例。成员端的记录来源与自定义目录保存在该目录的 `sources.json`；旧版 `codex-root.txt` 自动迁移为 Codex 来源路径。
 
-API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储。部门每日自动备份，保留最近 14 份；可手动备份到其他目录。备份包含工作材料，不包含可用的 API Key 和证书私钥。恢复到空目录后重新设置 API Key、核对地址并配对设备。
+Windows 端 API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储（DPAPI）。Ubuntu 成员端没有 DPAPI，凭据使用由机器标识和登录用户派生的密钥加密，文件权限保持 0600；不要把成员数据目录复制到其他机器后继续使用。部门每日自动备份，保留最近 14 份；可手动备份到其他目录。备份包含工作材料，不包含可用的 API Key 和证书私钥。恢复到空目录后重新设置 API Key、核对地址并配对设备。
 
 ## 构建
 
@@ -72,7 +75,18 @@ API Key、证书私钥和成员凭据使用 Windows 当前用户保护存储。�
 pwsh -File .\scripts\build.ps1
 ```
 
-`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行一条采集迁移回归；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
+Ubuntu 成员端构建需要 Rust 工具链、Node.js 22 及 Tauri 的 Linux 依赖；组长端不参与 Linux 构建，也不支持从 Windows 交叉编译：
+
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+  libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev \
+  build-essential pkg-config
+bash scripts/build-linux-member.sh
+```
+
+输出 `artifacts/linux-installers/CodexDailyReport.Member.deb` 与可运行目录 `artifacts/linux-publish`。CI 在 `ubuntu-22.04` 上运行成员端库回归和 Release 构建，发布流程额外生成 `.deb`。
+
+`build.ps1` 构建双端并生成 NSIS 安装包；已有 Agent 运行时直接复用，需更新时加 `-RebuildAgent`。默认运行采集回归（Codex 结构、DSH 解析与容错、Trae 导出/本地记录解析、截断）；同一源码已经验证后的打包可用 `-SkipTests`。`src`、`tools` 和旧 .NET 测试留作历史迁移参考，不参与新版构建或源码发布包。
 
 输出目录：
 
@@ -83,6 +97,24 @@ pwsh -File .\scripts\build.ps1
 - `artifacts/live/langgraph-020`：本机实际模型验证副本和导出的 Word/PDF，不进入安装包或源码包。
 
 ## 当前验证范围
+
+0.7.3 修复“测试模型连接”失败：`leader.testConnection` 的字符串输入导致流水线收尾取 `input.events` 时抛 AttributeError；已改为对非对象输入按空负载统计，新增 Agent 回归用例（修复前可稳定复现、修复后通过）。`agent/smoke_test.py`、`agent/pipeline_smoke_test.py` 通过；重建组长端 Agent 运行时与 Windows 双端安装包。边界：未用用户网关做真实调用（无凭据），连通性以用户点“测试”为准。
+
+0.7.2 完善 Ubuntu 包元数据与代码检查：deb 控制信息补上 Description/桌面 `Comment`、依赖去重（WebKitGTK 4.1/GTK3/AppIndicator 由打包器自动添加）；`cargo clippy` 在成员端、组长端、无桌面核心三种配置下 0 警告；deb 安装/无头启动/卸载保留数据复验，Windows 双端与 deb 0.7.2 重建并复验启动。成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。功能与 0.7.1 相同，未调用模型。
+
+0.7.1 增强 Trae 导出 JSON 的多会话拆分：成员端 25 项、组长端 28 项、无桌面核心 25 项库回归通过（新增 3 项：JSON dump 多会话、JSONL 按 session_id 分组、无 session_id 的 list 包装）；隔离 HTTPS 验收 `verify_trae_import` 覆盖 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件，组长端校验通过；另补实时 WAL 读取回归（写入连接保持打开时仍能采集）与源码包 clean-room 构建（解压后无桌面核心 26 项测试通过）。Windows 双端与 Ubuntu deb 0.7.1 重建并复验启动/安装。边界：仍无真实 Trae 导出样本，拆分规则基于公开数据结构，真实样本到位后复核；未调用模型。
+
+0.7.0 新增“Trae 本地记录”来源（国际版明文 `state.vscdb`）：成员端 22 项库回归通过（新增 5 项：明文读取、跨日过滤、加密库提示、坏载荷跳过、凭据脱敏），组长端 25 项、无桌面核心 22 项通过；隔离 HTTPS 验收 `verify_trae_import` 扩展为 Codex + Trae 导出 + Trae 本地记录三来源，3 会话、6 事件，预览仅含可见内容，组长端校验通过且快照来源含 `traeLocal`；探针合成目录自测、既有 `verify_multi_source`/`verify_selection` 回归、前端构建通过。Windows 双端与 Ubuntu deb 0.7.0 重建并复验启动/安装。交付前最终回归：成员端 22 项、组长端 25 项、无桌面核心 22 项库回归，三条隔离 HTTPS 验收，真实 DSH/Codex 只读探针 7 会话/2611 事件/内部记录泄漏 0（约 2 秒），前端构建与两个 CI/Release 工作流 YAML 解析通过，交付物哈希与 SHA 文件一致。桌面端另在本机 WSL2 的独立 Ubuntu 24.04.5 + WSLg 1.0.71 环境验证：交付的 0.7.0 deb 用 apt 安装（自动补齐 WebKitGTK 4.1 等依赖），成功渲染 1120x820 的“Codex 工作日报 · 成员端”窗口（截图 `artifacts/acceptance/ubuntu-2404-gui/member-window-ubuntu2404.png`），数据目录 0700、无启动错误，DBus 会话内单实例生效（第二次启动退出、窗口保留）。Windows 成员端另用 UI Automation 验证 0.7.0 界面：“记录来源”弹窗中 Codex、DeepSeek Harness、Trae 本地记录、Trae 导出四项均可见并可操作（截图 `artifacts/acceptance/windows-ui-0.7.0/source-dialog.png`），Ubuntu 24.04 弹窗截图同样确认四项来源（`member-source-dialog-ubuntu2404.png`）。此外用 UI Automation 在 Windows 真实桌面走了完整界面流程：绑定部门→采集并选择会话→预览 3 个来源的 3 会话/6 记录→确认上传，组长端校验通过（protocol 1），成员状态显示“已收到”（`artifacts/acceptance/gui-flow/20261112-194009/`）。Ubuntu 24.04（WSLg）上也用 xdotool 驱动了同样的完整界面流程：X11 剪贴板粘贴邀请、同意书、三来源采集预览、确认上传，经 SSH 反向隧道连到真实 Windows 组长端并通过生产校验，界面显示“已收到”（`artifacts/acceptance/linux-gui-flow/20261112-194826/`）。边界：WSLg 不是物理显示器/ GNOME Shell，托盘图标对象创建但未在面板展示；本环境没有真实 Trae 安装，本地读取规则来自公开工具的 `ItemTable`/`messages` 结构，需在装有国际版 Trae 的电脑上复验；Trae CN 仍只支持导出导入，未调用模型。
+
+0.6.2 完成 Trae 数据结构调研与不依赖样本的解析增强：成员端 17 项库回归通过（新增 `raw_messages` 包装/时间继承/标题、推理块剔除）；探针在合成目录上自测通过（国际版 workspace `state.vscdb` 复制、全局状态跳过、Trae CN 加密库含 WAL/SHM 复制、明文/加密/JSON 分类正确，证据 `artifacts/acceptance/trae-probe-selftest`）。调研结论：国际版聊天在明文 `state.vscdb`；Trae CN 为 SQLCipher 4 加密库、密钥仅能从进程内存获取，成员端不实现读取与内存扫描，继续使用官方导出导入。边界：当时仍无真实 Trae 导出样本；该结论已在 0.7.0 用于实现“Trae 本地记录”来源（真实 Trae 环境复验仍待提供）。
+
+0.6.1 在用户提供的独立 Ubuntu 24.04.4 工作区完成真实跨端验收：Linux 成员端核心（`--no-default-features`，无 Tauri/WebKitGTK 依赖）在本机 Windows 组长端的真实 HTTPS 服务上通过 SSH 反向转发完成配对→Codex/DSH/Trae 三来源采集→上传→状态查询，组长端按生产规则 `leader.validate_capture` 校验通过（protocol 1、3 会话、8 事件、时区/day 合法）；Ubuntu 24.04 上 15 项采集回归通过；新增 2 项提示分类单测（组长端合计 18 项）。Trae 缺时间戳的 `说明：` 提示不再误标“采集异常”，真实采集缺口仍标记。Windows 双端与 Ubuntu deb 0.6.1 重建：Windows 发布目录双端以隔离 `--data-dir` 实际启动无错误，deb 在 WSL 内安装、无头启动、卸载保留数据复验通过。边界：该机无 sudo 且无 WebKitGTK 运行时，Linux 桌面窗口验收见 0.7.0 附记（独立 Ubuntu 24.04 + WSLg）；跨端测试经 SSH 隧道（工作区不能直连 Windows 局域网），TLS 端到端；Trae 真实导出样本仍待提供，未调用模型。
+
+0.6.0 新增 Trae 导出导入：成员端 15 项、组长端 16 项库回归通过，覆盖 Markdown/JSON/JSONL 导出解析、无时间戳按文件日期、跨日跳过、坏文件告警、系统段落与导出元数据剔除、凭据脱敏；隔离目录通过实际 HTTPS 把 Trae 导出与 Codex 记录合并采集并上传，组长端校验通过，快照含两类来源且无系统段落/导出元数据；既有 Codex+DSH 上传与选择流程回归通过，前端 TypeScript 构建通过。Windows 双端 0.6.0 安装包与 Ubuntu 成员端 deb 重建：Windows 发布目录双端可执行文件以隔离 `--data-dir` 实际启动、无启动错误；deb 在 WSL 内 `apt install` 安装成功，已安装二进制无头启动、`apt remove` 后成员数据保留。本轮只用合成导出样例，未获得真实 Trae 导出样本，未读取 Trae 本地加密数据库，未调用模型。
+
+0.5.0 在 WSL2 Ubuntu 22.04 上完成成员端库回归（9 项采集测试）、Release 构建、`.deb` 打包与 Xvfb 无头启动；把交付的 `.deb` 用 `apt install` 与 `--reinstall` 实际安装成功（依赖自动补齐、desktop 入口与 `Categories=Office` 就位），已安装的二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。Windows 发布目录双端 0.5.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误。跨端协议分两端验证：Linux 成员端在 WSL 内用真实 HTTPS 监听器完成配对、双来源采集、上传与状态查询（正确指纹通过、错误指纹被拒绝、内部记录未上传），Linux 采集的 capture 再由真实 Windows 组长端 `leader.validate_capture` 校验通过。Trae 探测脚本在合成目录树上自测通过（明文 SQLite / 加密库分类与复制），真实 Trae 样本仍待提供。边界：本环境 WSL↔Windows 网络被防火墙拦截，未做跨端实机配对；未在真实 Ubuntu 桌面、X11/Wayland 会话或 ARM 上验收。
+
+0.4.0 在隔离目录通过实际 HTTPS 完成多来源采集与上传：Codex 与会话格式 v4 的 DeepSeek Harness 同日记录合并采集，成员端按来源筛选并上传，组长端校验后快照包含两类来源事件。DSH 内部记录（系统提示、请求头与会话日志投递记录）经结构核对未进入采集内容；旧格式会话、损坏尾部、注入型用户消息和单条超长记录分别由合成样例覆盖。本机真实 DSH 数据只做只读计数探针（`cargo run --example verify_sources`），未上传、未写入报告。前端 TypeScript 构建与两端 Rust 库回归通过；本轮不调用外部模型、不修改生产数据。
 
 0.3.6 在隔离目录通过实际成员端 HTTPS 请求验证旧来源冲突、原始补充留存、旧版失败队列迁移、较新编辑稿保留及新版明确复核提交。发布界面验证旧版仅能存草稿、新版到达保留尚未自动保存的输入，以及提交过程中自动刷新不会改变所提交的正文版本。证据：`artifacts/acceptance/feedback-conflict`。本轮只更新成员端，不调用模型、不修改生产记录。
 
@@ -100,4 +132,4 @@ pwsh -File .\scripts\build.ps1
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64、每人一个部门和一台主要工作电脑、本机 Codex 日志；不含普通 ChatGPT 网页、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、国际版 Trae 本地明文记录、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae CN 加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。

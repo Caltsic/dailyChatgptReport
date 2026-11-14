@@ -1,3 +1,171 @@
+# 0.7.3 修复“测试模型连接”报 AttributeError
+
+日期：2026-11-13。用户用自建网关（`https://twai.aiourstory.cn/v1`、`deepseek-v4.1-flash-1017`）保存配置后点“测试已保存模型配置”，总是收到 `Agent 执行失败（AttributeError）；'str' object has no attribute 'get'`。
+
+- 定位：`desktop/src-tauri/src/leader.rs` 的 `leader.testConnection` 调用 Agent 时传入的 `input` 是 `json!("测试模型连接")`（字符串），而 `agent/report_pipeline.py` 在成稿结束时调用 `coverage()` 生成采集范围摘要，其中 `self.input.get("events")` 假定输入是对象 → 抛出 AttributeError。因为异常发生在模型已成功回复之后的收尾阶段，所以表现为“连接其实通了但报错”，且与网关地址/模型/接口格式无关。
+- 修复：`coverage()` 对非对象输入按空负载处理（事件/报告计数为 0），行为与 `kind="test"` 的“无需分段”设计一致；其余路径不变。
+- 回归：在 `agent/smoke_test.py` 增加“连接测试”用例（字符串输入、完整 runtime、断言成功且 coverage 计数为 0、模式 direct）；修复前该用例稳定复现同一 AttributeError，修复后通过。`agent/smoke_test.py`（流式断流重试、EOF、401 诊断、断点复用、连接测试）与 `agent/pipeline_smoke_test.py`（分段并行、容量溢出细分、引用修复、恢复、部门汇总归因）全部通过。
+- 交付物 0.7.3（本机重建）：Windows 成员端安装包 2,415,818 字节（`5597F0EFB0D3C41F39CF9698490274895915D3D6E89AA10A06BCC57E9B1C138D`），组长端 27,908,857 字节（`D014D5420F16E1AED711DEFB2102578EAFCE04CF228458A23AC92710E03326D0`），Ubuntu 成员端 deb 3,993,090 字节（`2542B03971EDE7CC9718D6376A49757D09D122DBF9F8BAD51586F18BEBA26187`），源码包 97 个文件（`0947EA35CE49C2C20B4686F6523B484348E05F2C5C4E4E6899A8D00B1A9DC`）；SHA 清单见 `artifacts/installers/SHA256.txt`、`artifacts/linux-installers/SHA256.txt`。Windows 发布目录双端 0.7.3 以隔离数据目录实际启动正常；deb 在 WSL Ubuntu 22.04 内 `apt install`、无头启动、`apt remove` 后数据保留复验通过。
+- 边界：本轮未接入用户网关做真实调用（无凭据），修复依据是本地完整 runtime 复现；真实网关连通性仍由用户点“测试”验证。
+
+# 0.7.2 Ubuntu 包元数据与代码检查清理
+
+日期：2026-11-12。功能与 0.7.1 相同；本轮完善 Linux 包元数据、清理 clippy 告警并重建交付物。
+
+本轮验证路径：
+
+- deb 元数据：`bundle.shortDescription`/`longDescription` 生效——`dpkg-deb -I` 显示 `Description` 与完整描述，桌面入口含 `Comment`；依赖列表不再重复（`Depends: libssl3, xdg-utils, fonts-noto-cjk` + 打包器自动添加的 WebKitGTK 4.1/GTK3/AppIndicator）。
+- 安装复验：deb 在 WSL Ubuntu 22.04 内 `apt install` 安装成功，已安装二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。
+- 代码检查：`cargo clippy` 在成员端、`--features leader`、`--no-default-features` 三种配置下均为 0 警告（修正 3 处风格问题，1 处对压缩代码的 `possible_missing_else` 豁免）；成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。
+- 交付物 0.7.2（本机重建，不进入源码仓库）：Windows 成员端安装包 2,417,637 字节（SHA-256 `9F145C0FB8C540AC6FF1B8F5E258E7C8DA7E3234739B35E96F27B77DE6C7AA5B`），组长端 27,915,474 字节（`E0935C3D2896AC7A9B5277442C4F53944AC05B76B60C42463EBC241DC9F036AA`），Ubuntu 成员端 deb 3,992,952 字节（`E3E02E100B68FA0584EABC5AEA14D8DCB202EA591A354A1268A775B3010ED470`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.7.2 实际启动正常（`artifacts/acceptance/runtime-0.7.2/result.json`）。
+- 边界：仅元数据/检查清理，功能与 0.7.1 相同；未调用模型。
+
+# 0.7.1 Trae 导出多会话拆分
+
+日期：2026-11-12。成员端 Trae 导出解析增强；仍无真实 Trae 导出样本，规则来自公开资料与常见数据结构。
+
+本轮验证路径：
+
+- 变更：JSON/JSONL 文件中包含多条会话记录时（社区工具解密导出的 data dump 常见形态），按 `session_id`/标题拆分为独立会话，不再合并；支持 `messages`/`raw_messages` 嵌套、`list`/`sessions`/`conversations` 包装、JSONL 每条记录一个会话；每会话使用自己的稳定且互不重复的来源 id，标题优先 `session_title`/`title`、其次首条用户消息；单会话文件行为与 0.7.0 一致。
+- 解析回归：成员端 25 项、组长端 28 项、无桌面核心 25 项通过；新增 3 项覆盖 JSON dump 多会话拆分、JSONL 按 session_id 分组、无 session_id 的 list 包装；原有 Markdown/JSONL/跨日/无时间戳/坏文件/提示分类用例保持通过。
+- 隔离 HTTPS：`verify_trae_import` 现包含 Codex + Trae Markdown + 两条 JSON dump 会话 + Trae 本地记录，共 5 会话/10 事件；组长端 `validate_capture` 通过，快照来源含 codex/trae/traeLocal。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 交付物 0.7.1（本机重建，不进入源码仓库）：Windows 成员端安装包 2,417,735 字节（SHA-256 `BA824636CBF4A099F8AB6914CA801F70CC943667EE75347498ADD312B4D0FDE1`），组长端 27,919,101 字节（`34EB9FA76528E80ECEAC72DC85E887F4EEC8A83C0BF2CD834213BF8770392185`），Ubuntu 成员端 deb 3,994,088 字节（`C63BDFB44E114A60EE1D458FC2E0216F602041A9D0C4028AF1DF099BA681C53A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：无真实 Trae 导出样本，拆分规则基于公开资料和常见结构，真实样本到位后需复核；未调用模型。
+- 0.7.1 附：交付复核（本轮补充）
+  - 实时 WAL 读取回归：新增 1 项测试，在写入连接保持打开、记录只存在于 `-wal` 时执行采集；读取端复制 db+wal+shm 后仍能读到 2 条记录（模拟 Trae 运行时采集）。成员端 26 项、组长端 29 项、无桌面核心 26 项通过。
+  - 脚本静态检查：全部 `.ps1` 通过 PowerShell 解析器；全部 `.sh` 通过 `bash -n`。
+  - 交付物元数据：Windows 两个安装包 FileVersion/ProductVersion 均为 0.7.1，发布目录双端二进制 0.7.1；deb 的 Package/Version/Architecture/Depends 正确（WebKitGTK 4.1、GTK3、AppIndicator、libssl3、xdg-utils、Noto CJK），`ldd` 无缺失共享库。
+  - 源码包复核：97 个条目，含 `prompts/`、`agent/`、`scripts/`、示例、CI、VERSION、LICENSE；解压到独立目录后 `cargo test --no-default-features --lib` 26 项通过、无桌面核心示例构建通过（clean-room）。
+
+# 0.7.0 附：Ubuntu 24.04 成员端界面全流程（WSLg）
+
+日期：2026-11-12。用 xdotool 在 Ubuntu 24.04.5 + WSLg 的真实窗口里驱动成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”，并由真实 Windows 组长端（HTTPS + 生产上传校验）接收。
+
+- 环境与链路：Ubuntu 24.04.5（WSL2 导入发行版）、WSLg 1.0.71；成员端为交付的 0.7.0 deb（apt 安装，WebKitGTK 4.1）；组长端为 Windows 上当前源码构建的 `verify_cross_platform_leader`（127.0.0.1:18510）。WSL 不能直连 Windows，使用 Windows→WSL 的 SSH 反向隧道：邀请中的地址为 `https://127.0.0.1:18511`，经 sshd 转发到 Windows 的 18510，TLS 与邀请指纹校验仍是端到端真实链路。为此给验收示例增加了 `--advertised-port` 参数（仅测试工具，产品未改）。
+- 流程与结果：真实窗口点击“绑定部门”→ 用 X11 剪贴板粘贴邀请 → Tab/Return 提交并接受同意书（界面显示 `跨端 Linux 验证部门 / 跨端 Linux 验证成员`）→ 点击“采集并选择会话”，选择器显示 Codex/DeepSeek Harness/Trae 导出三个来源、3 会话/6 记录及脱敏预览 → 点击“确认上传 3 个会话”。组长端结果 `ok=true, protocol=1, sessionCount=3, eventCount=6`，`eventsByTool` codex=2/dsh=2/trae=2，`validatedBy=leader.validate_capture`；成员界面显示“已收到”，采集截至时间与 3 个会话正确。
+- 证据：`artifacts/acceptance/linux-gui-flow/20261112-194826/`（`01-main.png` … `09-status.png`、`leader-result.json`、`leader.log`、`tunnel.log`、`environment.txt`、复现脚本 `fixtures.sh`/`gui-flow.sh`）。
+- 说明：截图里的“当前未连接部门端，显示本机缓存：unexpected EOF”是因为验收用组长示例在写结果后退出；`已收到` 来自上传成功时的缓存状态，生产组长持续运行不会有该提示。该最小 cloud-image 未装彩色 emoji 字体，状态徽标 emoji 显示为方框，文字与状态本身正确。
+- 边界：仅合成夹具，无真实 Trae 数据、未调用模型；WSLg 是虚拟显示而非物理桌面/面板。
+
+# 0.7.0 附：Windows 成员端界面全流程（界面驱动）
+
+日期：2026-11-12。用 UI Automation 在真实 Windows 桌面会话里驱动 0.7.0 成员端界面，完成“绑定部门 → 采集并选择会话 → 预览 → 上传”的完整流程，并用真实组长端（本机 HTTPS + 生产上传校验）接收。
+
+- 环境：Windows 10.0.26200.9711；成员端用发布目录 0.7.0 二进制（与交付安装包同源，隔离 `--data-dir`）；组长端用 `verify_cross_platform_leader`（当前源码重建，`127.0.0.1:18500`，真实证书与 `leader.validate_capture`）；三个来源使用隔离夹具（Codex 2 条、DSH v4 原始 JSONL 2 条、Trae 导出 Markdown 2 条），成员 `sources.json` 预配置为夹具目录。
+- 流程与结果：UI Automation 粘贴邀请 → 同意并绑定（界面显示 `跨端 Linux 验证部门 / 跨端 Linux 验证成员`）→ 点击“采集并选择会话”打开真实选择器（3 个会话/6 条记录，来源标签 Codex/DeepSeek Harness/Trae 导出，Trae 预览显示“说明：...按文件日期计入”提示）→ 点击“确认上传 3 个会话”→ 成员状态显示 **🟢 已收到**、等待组长下发报告；组长端结果 `ok=true, protocol=1, sessionCount=3, eventCount=6`，`eventsByTool` codex=2/dsh=2/trae=2，来源摘要含三类，`validatedBy=leader.validate_capture`。
+- 证据：`artifacts/acceptance/gui-flow/20261112-194009/`（`01-main-before-pair.png` … `06-after-upload.png`、`names-*.txt`、`session-titles.txt`、`summary.json`、`leader-result.json`、`environment.txt`）。
+- 说明：本轮还修复了验收夹具使用旧版组长示例二进制的问题（旧二进制未包含 0.6.1 的 `说明：` 提示分类，导致状态一度显示“采集异常”；用当前源码重建后状态为 🟢 已收到）。
+- 边界：全部为合成数据，无真实 Trae 数据、未调用模型、未使用生产数据；Windows NSIS 安装包本身未在本机安装（用同源发布二进制）。
+
+# 0.7.0 附：Windows 成员端界面与来源对话框
+
+日期：2026-11-12。用 Windows 交互桌面会话验证 0.7.0 成员端界面与“记录来源”四来源配置 UI（发布目录二进制、隔离数据目录）。
+
+- 方法：启动 `artifacts/tauri-publish/Member/CodexDailyReport.Member.exe`（0.7.0，隔离 `--data-dir`），`PrintWindow`（PW_RENDERFULLCONTENT）截窗口；用 UI Automation 找到并调用“记录来源”按钮，截取弹窗并查询可访问性树。
+- 结果：窗口标题 `Codex 工作日报 · 成员端`；UI Automation 找到 `记录来源`、`Codex`、`DeepSeek Harness`、`Trae 本地记录`、`Trae 导出` 五个名称；本机检测到 `C:\Users\Kaltsit\.codex`、`C:\Users\Kaltsit\.dsh`，Trae 两项按未安装状态显示提示；数据目录仅 `outbox`、无 `startup-error.txt`、进程保持运行。
+- 证据：`artifacts/acceptance/windows-ui-0.7.0/main-window.png`、`source-dialog.png`、`uia-check.txt`、`environment.txt`。
+- 同一构建的 Ubuntu 24.04 窗口也验证了相同四来源弹窗：`artifacts/acceptance/ubuntu-2404-gui/member-source-dialog-ubuntu2404.png`。
+- 边界：本机无 Trae 安装、未调用模型、未使用生产数据；未执行 Windows NSIS 安装/卸载（用发布目录二进制验证）。
+
+# 0.7.0 附：Ubuntu 24.04 桌面窗口（WSLg）
+
+日期：2026-11-12。用户提供的工作区 (Ubuntu 24.04.4) 无 sudo/WebKitGTK，无法运行窗口；本轮在本机 WSL2 中导入独立的 **Ubuntu 24.04.5** 发行版（cloud-image rootfs，非 WSL2 22.04），在 WSLg 1.0.71（Wayland 合成器 + XWayland）下验证交付的 0.7.0 `.deb` 与桌面窗口。
+
+本轮验证路径：
+
+- 环境：Ubuntu 24.04.5 LTS，内核 6.6.87.2-microsoft-standard-WSL2，WSLg 1.0.71，`DISPLAY=:0`、`WAYLAND_DISPLAY=wayland-0`、Wayland 输出 `rdp-0 2560x1440`。
+- 安装：把构建的 `CodexDailyReport.Member-0.7.0.deb` 用 `apt install` 装入该发行版（自动补齐 `libwebkit2gtk-4.1-0 2.52.6`、`libayatana-appindicator3-1`、`fonts-noto-cjk` 等依赖），`dpkg -s` 显示 `Version: 0.7.0`，desktop 入口 `Categories=Office`。
+- 窗口：在 `dbus-run-session` 下以 X11 后端启动，XWayland 树中出现标题为 `Codex 工作日报 · 成员端`、1120x820 的窗口，另有 `CodexDailyReport.Member` 托盘窗口；截图 `artifacts/acceptance/ubuntu-2404-gui/member-window-ubuntu2404.png`（渲染正常，界面为 0.7.0 成员工作台）。数据目录权限 0700，无 `startup-error.txt`，托盘构建未失败。
+- 单实例：同一 DBus 会话内第二次启动的进程退出、主进程仍为 1、窗口数仍为 1（`tauri-plugin-single-instance` 生效）。
+- 兼容：Wayland 后端（`GDK_BACKEND=wayland`）也能启动并保持运行；WSLg 合成器不支持 `wlr-screencopy`，无法用 grim 拍 Wayland 截图，因此窗口像素证据取自 X11 后端；另用 Xvfb 在 24.04 用户态复现 X11 截图（`member-xvfb-ubuntu2404.png`）。
+- 日志：`artifacts/acceptance/ubuntu-2404-gui/`（`gui-run.log`、`gui-shot-run.log`、`gui-*.log`、`run.log`、`inner-gui.sh`）。
+- 边界：WSLg 不是物理显示器，也没有 GNOME Shell 面板，托盘图标对象创建成功但未在面板中展示；HiDPI/多显示器、真实硬件 GPU 与物理 Ubuntu 桌面仍未验证。未调用模型、未修改生产数据。
+
+# 0.7.0 Trae 本地明文记录
+
+日期：2026-11-12。基于 0.6.2 的公开资料调研实现“Trae 本地记录”来源（国际版明文 `state.vscdb`）；Trae CN 加密库仍只支持导出导入。本环境无真实 Trae 安装，本轮用合成库验证解析与集成，不声称已对真实 Trae 生效。
+
+本轮验证路径：
+
+- 解析与容错回归（成员端 22 项、无桌面核心 22 项、组长端 25 项）：新增 5 项 Trae 本地记录用例——明文 `state.vscdb`（`ItemTable` + `memento/icube-ai-agent-storage`）读取用户/助手可见消息、跨日消息过滤、加密/非 SQLite 库跳过并提示改用导出导入、无效聊天载荷忽略、可见文本凭据脱敏；原有 Codex/DSH/Trae 导出/截断/提示分类用例保持通过。
+- 隔离 HTTPS 验收 `verify_trae_import` 扩展为三来源：Codex + Trae 导出 Markdown + Trae 本地记录（合成明文库），采集 3 会话、6 事件；两个 Trae 会话预览只含可见内容；选择上传后组长端 `validate_capture` 通过，快照包含 codex/trae/traeLocal 三类来源。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 既有验收回归：`verify_multi_source`、`verify_selection` 通过；前端 TypeScript 构建通过；探针合成目录自测（0.6.2 证据）保持有效。
+- 交付物 0.7.0（本机重建，不进入源码仓库）：Windows 成员端安装包 2,414,899 字节（SHA-256 `BA1CB6A701FE680408C6F2022F4D3B72D40E778ADC350B5BCE7DDED411FD0DA9`），组长端 27,919,814 字节（`FAFDA1DC83270E728F75BE35177DC3C999A80408CFD730BABCF40EA9218D324A`），Ubuntu 成员端 deb 3,989,814 字节（`769C9E712EDF01DE299BAF1D467BB28B875F1EA016D775256FCCF4D16FE6061A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：本环境没有真实 Trae 安装或真实 `state.vscdb`，解析规则来自公开工具（明文工作区、`ItemTable` 聊天键、`messages` 列表），需在装有国际版 Trae 的电脑上复验后才算真实生效；Trae CN 加密库不读取、不扫描内存；Trae 导出仍缺真实样本。未调用模型。
+- 0.7.0 最终回归（交付前复核）：成员端 22 项、组长端 25 项、无桌面核心 22 项库回归通过；`verify_multi_source`、`verify_selection`、`verify_trae_import` 三条隔离 HTTPS 验收通过；真实本机 DSH/Codex 只读探针 7 会话、2611 事件、内部记录泄漏 0（约 2.0 秒，不落盘不上传）；前端 TypeScript/Vite 构建通过；`ci.yml`/`release.yml` 用 PyYAML 解析通过（CI 5 任务、Release 2 任务）；交付物 SHA-256 与 `artifacts/*/SHA256.txt` 一致。
+
+# 0.6.2 Trae 导出解析增强与探针更新
+
+日期：2026-11-12。用户表示 Trae 真实样本稍后提供，本轮用公开资料补齐不依赖样本的部分。成员端仍不读取 Trae CN 本地加密库，也不做进程内存扫描。
+
+本轮验证路径：
+
+- 调研（只读公开资料）：Trae 国际版聊天在 `%APPDATA%\Trae\User\workspaceStorage\<id>\state.vscdb`（明文 SQLite，`ItemTable` 键如 `inputHistory`、`ChatStore`、`memento/icube-ai-agent-storage`）；Trae CN 在 `%APPDATA%\Trae CN\ModularData\ai-agent\database.db`（SQLCipher 4；密钥需从进程内存提取，社区脚本实现；近期版本提供官方“导出历史对话”）。参考 trae-db-decrypt、trae-history、ai-data-extraction。
+- 解析增强回归（成员端 17 项、无桌面核心 17 项、组长端 20 项）：新增 2 项覆盖 `raw_messages`/`sessions`/`history_v2` 包装 JSON、记录级 `created_at` 时间继承、包装 `session_title` 标题、推理块剔除；原有 Markdown/JSONL/跨日/无时间戳/坏文件用例保持通过。
+- 探针合成目录自测：国际版 workspace `state.vscdb` 及其 `-wal` 被复制；全局 `state.vscdb`/`storage.json` 按隐私默认跳过并计数；Trae CN `database.db`（合成加密头）与 `-wal`/`-shm` 被复制；明文 SQLite、加密库、JSON 文本分类正确。证据：`artifacts/acceptance/trae-probe-selftest`。
+- 既有验收回归：`verify_multi_source`、`verify_selection`、`verify_trae_import` 通过；前端 TypeScript 构建通过。
+- 交付物 0.6.2（本机重建，不进入源码仓库）：Windows 成员端安装包 1,890,944 字节（SHA-256 `C5F54A1E316E8BC1D3D6B9635C01E7E2D83E293DF25D3A9F47456A919BEB48B8`），组长端 27,910,415 字节（`7BAA1B593736EE6F4009CA56DA6EC6505297A38E3468681F7A62904584AEAC6D`），Ubuntu 成员端 deb 3,961,178 字节（`55FD18ECED3510EE5C1986FF7123CE5A9C460C2152D5B2646370CF7FA2DE5FFC`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端与 deb 安装/启动复验随构建执行。
+- 边界：仍无真实 Trae 导出样本，解析规则基于公开资料和常见结构，真实导出后需复核；国际版明文 `state.vscdb` 的自动读取已在 0.7.0 据此实现（见 0.7.0 章节）；Trae CN 加密库不实现解密。未调用模型。
+
+# 0.6.1 真实 Ubuntu 跨端与提示分类
+
+日期：2026-11-12。在用户提供的独立 Ubuntu 24.04.4 工作区（ws02，x64，内核 6.8，2 核/5.8GB）完成真实跨端验收；Trae 真实样本仍未提供，自动解析仍待样本。
+
+本轮验证路径：
+
+- 平台：Ubuntu 24.04.4 LTS（非 WSL）；Rust 1.99.1 由 rustup 安装到用户目录。该机无 sudo 且未安装 WebKitGTK 运行时，因此把 Tauri 桌面外壳改为可选 `desktop` feature（默认开启），用 `--no-default-features` 构建无桌面核心；头文件用下载的 `libssl-dev`（3.0.13）解包到用户目录 + 系统同版本共享库完成链接，未改动系统。
+- 真实跨端：Ubuntu 上编译的成员端二进制通过 SSH 反向端口转发连接本机 Windows 组长端（真实 leader 代码，HTTPS + 邀请内证书指纹校验），完成配对→三来源采集（Codex、DSH v4 原始 JSONL、Trae 导出 Markdown）→选择→上传→状态查询；组长端按生产上传规则 `leader.validate_capture` 校验通过：protocol 1、3 个会话、8 条事件（codex 2 / dsh 4 / trae 2）、时区与 day 合法，状态查询在线且队列清空。证书指纹 `D9:26:70:C5:6C:CD:07:7D:12:CA:BA:22:7B:97:1F:64:A9:25:DE:E7:A9:64:25:4B:9F:C1:0F:B3:E6:BF:BA:0E`。证据：`artifacts/acceptance/cross-platform-real`（`leader-result.json`、`member-result.json`、`worker-environment.txt`、`invitation.txt`）。
+- Ubuntu 24.04 采集回归：15 项通过（`cargo test --no-default-features --lib`，含 Codex/DSH/Trae 解析、截断、坏文件、跨日）。
+- 提示分类修复：Trae 缺逐条时间戳的提示加 `说明：` 前缀，不再把提交显示为“已收到／采集异常”；旧格式会话、无法识别文件等真实缺口仍标记异常。组长端新增 2 项分类单测（合计 18 项）。
+- 交付物 0.6.1（本机重建，不进入源码仓库）：Windows 成员端安装包 1,890,769 字节（SHA-256 `DA42B60190A000B996456B2A8688FDC6C270976F314AEAD0A5DAF4E2CDF16F87`），组长端 27,919,881 字节（`5E23441C061DC7C717A44D01F97D7E1444B429EF20C80C57EF31949B87AB3355`），Ubuntu 成员端 deb 3,960,066 字节（`4E43FF9A09EA1B40332E9EF1EC2882CF0B00CA54ADA3C53EC43E68BDAB97717A`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.6.1 可执行文件以隔离 `--data-dir` 实际启动、无启动错误（`artifacts/acceptance/runtime-0.6.1/result.json`）；deb 0.6.1 在 WSL Ubuntu 22.04 内 `apt install` 安装成功、已安装二进制无头启动、数据目录 0700、`apt remove` 后数据保留。
+- 边界：该机无 sudo、apt 代理需要认证，无法安装 WebKitGTK 运行时，所以 Linux **桌面窗口**没有在这台 Ubuntu 24.04 上运行；桌面外壳仍在 WSL2 Ubuntu 22.04 上做无头启动/安装验收。跨网段测试使用 SSH 反向转发（Ubuntu 工作区不能直连 Windows 局域网），TLS 端到端；真实内网直连部署尚未验证。Trae 真实导出样本仍待提供。
+
+# 0.6.0 Trae 导出导入
+
+日期：2026-11-12。成员端新增 Trae 手动导出导入来源；组长端协议、Agent 与提示词未改。Trae 本地加密数据库不直接读取，自动解析待真实样本。
+
+本轮验证路径：
+
+- 解析回归：成员端 15 项、组长端 16 项库回归通过（`cargo test --lib`、`--features leader`）。新增 6 项覆盖 Markdown 角色段落、JSON 消息数组、JSONL 逐行、无时间戳按文件日期、跨日导出跳过、无法识别文件告警；样例中核对系统段落/导出元数据剔除与凭据脱敏。
+- 隔离目录实际 HTTPS 验收（`cargo run --features leader --example verify_trae_import`）：成员端启用 Codex + Trae 导出两个来源，采集得到 2 个会话；Trae 会话标题、事件数与预览正确，系统段落和导出时间元数据未进入预览；选择后上传，组长端协议校验通过，快照 4 条事件、来源摘要含 codex/trae，且不含 Trae 系统段落与导出元数据。结果：`artifacts/acceptance/trae-import/latest-result.json`。
+- 既有回归：`verify_multi_source`（Codex+DSH 上传）、`verify_selection`（选择/离线/空记录）通过；前端 TypeScript/Vite 构建通过。
+- 交付产物（本机重建，不进入源码仓库）：Windows 成员端安装包 1,892,759 字节（SHA-256 `91DD092D…F468309987`），组长端 27,912,247 字节（`C81CFB38…C23683B`），Ubuntu 成员端 deb 3,959,930 字节（`1CFCB60D…B9E10129`）；源码包校验值见 `artifacts/installers/SHA256.txt`。Windows 发布目录双端 0.6.0 可执行文件以隔离 `--data-dir` 实际启动，数据目录与数据库/证书创建正常、无启动错误（`artifacts/acceptance/runtime-0.6/result.json`）；deb 在 WSL Ubuntu 22.04 内用 `apt install` 实际安装（依赖自动补齐，desktop 入口 `Categories=Office`），已安装二进制无头启动正常、数据目录 0700，`apt remove` 后成员数据保留。
+- 边界：未获得真实 Trae 导出样本，解析规则基于常见 Markdown/JSON 对话结构；导入内容可在预览核对，仍可能对特殊格式产生误判。未实现读取 Trae 本地加密数据库；本轮未调用模型、未修改生产数据。
+
+# 0.5.0 Ubuntu 成员端
+
+日期：2026-11-12。本次只变更成员端构建与平台层；组长端仍为 Windows x64，Windows 成员端行为与 0.4.0 相同。
+
+本轮验证路径（WSL2 Ubuntu 22.04.2 LTS，webkit2gtk-4.1 2.50.4，Rust stable，Node 22）：
+
+- 库回归与构建：安装 Tauri Linux 依赖后 `npm ci`、`npm run build`、`cargo test --manifest-path desktop/src-tauri/Cargo.toml --lib`（9 项采集回归全部通过）与 `cargo build --release` 通过；未启用 `leader` feature（组长端功能仅 Windows）。
+- 打包：`npx tauri build --bundles deb --config src-tauri/tauri.build.conf.json` 生成 `CodexDailyReport Member_0.5.0_amd64.deb`（交付包 3,937,394 字节，SHA-256 `cb7e3ec97c7ebe148a43b202c953920218463d74bd47c67a9945e9d892f07486`）。控制信息：`Package: codex-daily-report-member`、`Version: 0.5.0`、`Architecture: amd64`，依赖含 `libwebkit2gtk-4.1-0`、`libgtk-3-0`、`libayatana-appindicator3-1`、`libssl3`、`xdg-utils`、`fonts-noto-cjk`；文件列表含 `/usr/bin/CodexDailyReport.Member`、desktop 入口、`Categories=Office;` 与 32/128/256/512 图标。
+- 无头启动：Xvfb + dbus-run-session 下以 `--data-dir` 启动，进程持续运行超过 12 秒；数据目录自动创建且权限为 0700，无 `startup-error.txt`，本环境托盘构建成功、无托盘失败提示。环境内 xdg-desktop-portal 的 PipeWire 警告与 GTK 无窗口管理器提示不影响启动。
+- 单实例：同一数据目录启动第二个实例，第二个进程返回 0 后退出，第一个实例继续运行；再次启动恢复已隐藏窗口的单实例插件分支可用。
+- Windows 回归：平台层拆分后 Windows `cargo test --lib`（9 项）与 `--features leader`（10 项，含内置提示词解密）通过；Windows 双端 0.5.0 Release 与 NSIS 安装包重建通过。
+- Windows 运行验证：`artifacts/tauri-publish` 下 0.5.0 成员端与组长端可执行文件分别以隔离的 `--data-dir` 启动，10 秒后进程存活；成员端创建 `outbox`，组长端创建 `department.db`、`submissions`、`reports` 与证书文件，均无 `startup-error.txt`；验证后结束测试进程，未触碰已安装程序与真实部门数据。证据：`artifacts/acceptance/runtime-0.5/result.json`。
+- 包安装、重装与卸载：把交付的 `CodexDailyReport.Member.deb`（SHA-256 `CB7E3EC9…7486`）在 WSL 内用 `apt install` 实际安装成功，`dpkg -s` 为 `install ok installed`、版本 0.5.0、架构 amd64，依赖由 apt 自动补齐；`/usr/bin/CodexDailyReport.Member`、desktop 入口（`Categories=Office;`）与图标就位。`apt install --reinstall` 后已安装的二进制在 Xvfb + dbus 下以 `--data-dir` 启动，进程持续运行、数据目录权限 0700。`apt remove` 后包状态移除但成员数据目录保留。
+- 交付产物（本机重建，均不进入源码仓库）：Windows 成员端安装包 1,876,123 字节（SHA-256 `38A1E87E31FAF41BCBB6421D66241278A0A53408E6179561F3BA12CA07AEC3DD`），组长端 27,920,012 字节（`F71E3E5109D07E68A01DF107116A078926352B4A7852CD0ED841BA2FC7B1D0C7`），源码包 304,241 字节（`DF4F462E56E9E3F29FF85EC273430C9D67FA4E8CB744BCF0E37E8CE661BB1A56`），Ubuntu 成员端 deb 3,937,394 字节（`CB7E3EC97C7EBE148A43B202C953920218463D74BD47C67A9945E9D892F07486`）。
+- Trae 探测工具自测：在合成目录树上（明文 SQLite 文件头、随机字节的加密样本、`-IncludeStateDb`）运行 `scripts/probe-trae.ps1 -ExtraRoots`，正确分类 `sqlite-plaintext` / `encrypted-or-unknown` 并复制 3 个库文件，输出 `trae-probe.json`。仅使用合成数据，未涉及真实 Trae 安装或数据。证据：`artifacts/acceptance/runtime-0.5/trae-probe-selftest`。
+- 跨端协议验证（本机沙箱内 WSL 无法访问 Windows 主机端口：Windows 防火墙拦截入站，且 WSL 镜像网络模式配置失败，故拆成两端分别验证）：
+  1) Linux 成员端在 WSL 内对**真实 HTTPS 监听器**（示例内置协议对端，按 v1 路由实现 `/v1/pair`、`/v1/status/{day}`、`/v1/submissions`、`/v1/supplements` 与 Bearer 校验）完成配对、Codex+DSH 双来源采集、上传与状态查询；正确指纹成功、错误指纹在 TLS 阶段被拒绝；上传的 capture 经服务端协议版本、时区、哈希、事件类型与会话计数校验；DSH 内部记录未进入上传内容。证据：`examples/verify_member_transport`（Linux-only）与 `artifacts/acceptance/linux-transport/result.json`。
+  2) 把 Linux 端采集并上传的 capture JSON 交给**真实 Windows 组长端**的 `leader.validate_capture` 校验，结果通过（2 会话、6 事件、协议 1、时区与事件时间范围一致，来源摘要含 codex/dsh）。证据：`examples/verify_capture_file` 与 `artifacts/acceptance/cross-platform/leader-validation.json`。
+- 边界：当时跨端**网络级实机配对**未验证（此环境 WSL↔Windows 网络被拦截；0.6.1 已补真实跨端上传、0.7.0 已补 Ubuntu 24.04 GUI 全流程，见上）；未在真实 Ubuntu 桌面（X11/Wayland、GNOME 托盘扩展、HiDPI）上人工操作；未覆盖 ARM 和 Ubuntu 20.04；Linux 端出现 xdg-desktop-portal 的 PipeWire 警告，属无头环境提示。
+
+# 0.4.0 多来源采集（Codex + DeepSeek Harness）
+
+日期：2026-11-12。成员端采集与组长端提示词更新。需求来自用户确认：Linux 版本只做成员端；Trae 安装在 Windows、样本待提供；DSH 部门成员普遍使用；单条记录设上限；顺序为 0.4 多来源、0.5 Linux 成员端、Trae。
+
+本轮验证涉及的路径：
+
+- 采集层回归（9 项库测试，`cargo test --lib` 与 `--features leader` 均通过）：Codex 既有结构、脱敏、跨日、归档与损坏行行为保持；Codex 新增超长事件截断与修改时间预筛；DSH v4 可见事件映射与内部记录排除（system/message、request/header、注入型 user/message、title LLM、delivery）；DSH 继承会话按 `session/end-seed` 截点跳过历史、缺少截点时整会话跳过并告警；旧/较新格式提示；损坏尾部容错；跨日过滤；超长工具结果截断标注。
+- 真实本机数据只读探针（`cargo run --example verify_sources -- --dsh %USERPROFILE%\.dsh --codex %USERPROFILE%\.codex`）：2026-11-12 当日 6 个会话（Codex 1、DSH 5）、1083 条事件，采集耗时约 1.1 秒；结构化核对 DSH 内部记录（系统提示、请求头、会话日志投递）进入采集的数量为 0；未上传、未写入报告、未修改本机会话。结果：`artifacts/acceptance/multi-source/probe-20261112-*.json`（本机副本，不进入发布包）。
+- 隔离目录实际 HTTPS 多来源闭环（`cargo run --features leader --example verify_multi_source`）：成员端分别配置 Codex 与 DSH 来源，采集得到 2 个会话；DSH 会话标题、项目、来源和子代理字段保留，预览包含可见对话/工具结果且不含系统提示、推理与注入上下文；选择两类会话后经实际 HTTPS 上传，组长端协议校验通过，快照为 2 会话 6 事件，事件带 `tool`、快照带 `sources` 摘要，内部记录未出现。结果：`artifacts/acceptance/multi-source/latest-result.json`。
+- 既有选择流程回归（`verify_selection`）：新的来源配置操作下，选择、冻结快照、离线排队、重复确认、排除会话与空记录语义全部保持；会话选择记忆仍以 Codex 路径为键。结果：`artifacts/acceptance/tauri-selection/latest-result.json`。
+- TypeScript/Vite 构建、`cargo check --examples --features leader`、Windows 双端 Release 与 NSIS 安装包构建通过（版本 0.4.0，产物与校验见 `artifacts/installers/SHA256.txt`）。
+
+未验证与边界：本轮不调用外部模型，`personal.v3`、`extract.v2` 的提示词改动只验证了资源加密/解密与构建，未在实际模型上生成报告；Trae 本地记录未接入（其 Windows 安装目录与导出样本待用户提供）；Linux 成员端为 0.5 范围；真实 DSH 探针只读取当日本机会话，不代表其他成员机器与历史格式的覆盖。未修改生产数据、未上传真实工作记录。
+
 # 0.3.6 成员补充版本冲突
 
 日期：2026-11-10。仅更新成员端，组长端沿用 0.3.5。组长拒绝旧正文或旧来源的补充符合版本规则；缺陷是成员界面仍允许提交，且旧版队列只显示 HTTP 409，未给出可继续操作的路径。

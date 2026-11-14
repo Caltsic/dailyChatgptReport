@@ -111,7 +111,22 @@ def main() -> None:
             assert "PRIVATE_" not in completed.stdout and "private-key-smoke" not in completed.stdout
             assert not any(e.get("stage") == "等待重试" for e in events)
             assert sum(p["model"] == "permanent-fixture" for p in calls) == 1
-        print("PASS Agent explicit and silent stream-disconnect recovery, complete-result checkpoint, permanent error diagnostics and existing output flow")
+        # The connection test sends a plain string prompt, not a report payload; the
+        # coverage summary must not assume a dict input (used to fail with AttributeError).
+        with tempfile.TemporaryDirectory(prefix="report-agent-connection-") as temp:
+            request["workspace"] = temp
+            request["jobId"] = "connection-test"
+            request["kind"] = "test"
+            request["api"]["model"] = "connection-fixture"
+            request["input"] = "测试模型连接"
+            completed = subprocess.run(command, input=json.dumps(request, ensure_ascii=False), text=True, encoding="utf-8", capture_output=True, check=False)
+            events = [json.loads(line) for line in completed.stdout.splitlines()]
+            assert completed.returncode == 0, completed.stdout + completed.stderr
+            assert events[-1]["type"] == "result" and events[-1]["text"] == report
+            coverage = next(e["coverage"] for e in events if e.get("type") == "evidence")
+            assert coverage["inputEvents"] == 0 and coverage["inputReports"] == 0, coverage
+            assert coverage["mode"] == "direct" and not coverage["segments"], coverage
+        print("PASS Agent explicit and silent stream-disconnect recovery, complete-result checkpoint, permanent error diagnostics, connection-test coverage and existing output flow")
     finally:
         server.shutdown()
         server.server_close()

@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $output = Join-Path $root 'artifacts\installers'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
-$files = @('.gitignore', '.gitattributes', 'LICENSE', 'README.md', 'VALIDATION.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md', 'CHANGELOG.md', 'VERSION', 'Directory.Build.props', 'global.json', 'scripts/build.ps1','scripts/build-tauri.ps1','scripts/build-agent.ps1','scripts/package-source.ps1') | ForEach-Object { Get-Item -LiteralPath (Join-Path $root $_) }
+$files = @('.gitignore', '.gitattributes', 'LICENSE', 'README.md', 'VALIDATION.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md', 'CHANGELOG.md', 'VERSION', 'Directory.Build.props', 'global.json', 'scripts/build.ps1','scripts/build-tauri.ps1','scripts/build-agent.ps1','scripts/build-linux-member.sh','scripts/probe-trae.ps1','scripts/package-source.ps1') | ForEach-Object { Get-Item -LiteralPath (Join-Path $root $_) }
 if (Test-Path -LiteralPath (Join-Path $root '.github')) {
     $files += Get-ChildItem -LiteralPath (Join-Path $root '.github') -Recurse -File
 }

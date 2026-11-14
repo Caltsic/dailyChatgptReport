@@ -269,7 +269,7 @@ impl Leader {
                 let Some(job) = get(c, "Job", jid)?.filter(|j| s(j, "state") == "running") else { return Ok(()); };
                 let id = common::id();
                 let version = latest(c, "Report", s(&m, "id"), day)?.map_or(0, |r| n(&r, "version")) + 1;
-                let report = json!({"id":id,"memberId":m["id"],"memberName":m["name"],"department":cfg["name"],"day":day,"version":version,"snapshotId":snap["id"],"snapshotVersion":snap["version"],"capturedAt":cap["capturedAt"],"sessionCount":cap["sessionCount"],"warnings":cap["warnings"],"content":{"tasks":[],"outputs":[],"verification":[],"blockers":[],"nextSteps":[]},"body":body,"sources":{},"analysisSources":job["analysisSources"],"analysisCoverage":job["analysisCoverage"],"promptVersion":"personal.v2","model":cfg["model"],"createdAt":common::now(),"releasedAt":common::now(),"finalizedAt":null,"feedback":null,"timeZone":cap["timeZone"]});
+                let report = json!({"id":id,"memberId":m["id"],"memberName":m["name"],"department":cfg["name"],"day":day,"version":version,"snapshotId":snap["id"],"snapshotVersion":snap["version"],"capturedAt":cap["capturedAt"],"sessionCount":cap["sessionCount"],"warnings":cap["warnings"],"content":{"tasks":[],"outputs":[],"verification":[],"blockers":[],"nextSteps":[]},"body":body,"sources":{},"analysisSources":job["analysisSources"],"analysisCoverage":job["analysisCoverage"],"promptVersion":"personal.v3","model":cfg["model"],"createdAt":common::now(),"releasedAt":common::now(),"finalizedAt":null,"feedback":null,"timeZone":cap["timeZone"]});
                 put(c, "Report", &id, &report, day)?;
                 complete(c, jid, &id)?;
                 audit(c, "生成并下发个人日报", &id)
