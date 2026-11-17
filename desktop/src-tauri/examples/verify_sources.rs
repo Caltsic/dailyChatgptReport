@@ -106,8 +106,11 @@ fn main() -> anyhow::Result<()> {
     if let Some(path) = arg("--dsh") {
         roots.dsh = Some(PathBuf::from(path));
     }
+    if let Some(path) = arg("--zcode") {
+        roots.zcode = Some(PathBuf::from(path));
+    }
     if roots.is_empty() {
-        anyhow::bail!("请用 --codex / --claude / --agy / --dsh 等参数指定要检查的本机记录目录");
+        anyhow::bail!("请用 --codex / --claude / --agy / --dsh / --zcode 等参数指定要检查的本机记录目录");
     }
     let day = match arg("--day") {
         Some(day) => day,
