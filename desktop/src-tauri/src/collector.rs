@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+pub mod agy;
 pub mod claude;
 pub mod codex;
 pub mod dsh;
@@ -12,6 +13,7 @@ pub mod trae;
 pub mod trae_local;
 
 /// Labels shown in the member UI and used as collection warning prefixes.
+pub(crate) const LABEL_AGY: &str = "AGY CLI";
 pub(crate) const LABEL_CLAUDE: &str = "Claude Code";
 pub(crate) const LABEL_CODEX: &str = "Codex";
 pub(crate) const LABEL_DSH: &str = "DeepSeek Harness";
@@ -31,6 +33,7 @@ pub const TRUNCATION_NOTE: &str = "超过 200000 字符的单条记录已截断�
 pub struct SourceRoots {
     pub codex: Option<PathBuf>,
     pub claude: Option<PathBuf>,
+    pub agy: Option<PathBuf>,
     pub dsh: Option<PathBuf>,
     /// Folder containing conversations exported manually from the Trae IDE.
     pub trae: Option<PathBuf>,
@@ -42,6 +45,7 @@ impl SourceRoots {
     pub fn is_empty(&self) -> bool {
         self.codex.is_none()
             && self.claude.is_none()
+            && self.agy.is_none()
             && self.dsh.is_none()
             && self.trae.is_none()
             && self.trae_local.is_none()
@@ -143,6 +147,13 @@ pub fn collect_for_selection(roots: &SourceRoots, day: &str, zone: &str) -> anyh
             "claude",
             LABEL_CLAUDE,
             claude::collect(root, target_day, timezone, cutoff)?,
+        ));
+    }
+    if let Some(root) = &roots.agy {
+        captured.push((
+            "agy",
+            LABEL_AGY,
+            agy::collect(root, target_day, timezone, cutoff)?,
         ));
     }
     if let Some(root) = &roots.dsh {

@@ -178,13 +178,14 @@ pub async fn run(args: &[String]) -> Result<()> {
     match command {
         "init" | "sources" => {
             let result = if command == "sources"
-                && ["--codex", "--claude", "--dsh", "--trae-local", "--trae"]
+                && ["--codex", "--claude", "--agy", "--dsh", "--trae-local", "--trae"]
                     .iter()
                     .any(|name| value(args, name).is_some())
             {
                 let entries = [
                     ("codex", "--codex"),
                     ("claude", "--claude"),
+                    ("agy", "--agy"),
                     ("dsh", "--dsh"),
                     ("traeLocal", "--trae-local"),
                     ("trae", "--trae"),
