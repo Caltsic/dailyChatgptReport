@@ -515,10 +515,8 @@ mod tests {
         fn collect(&self) -> crate::collector::SelectionCapture {
             collect_for_selection(
                 &SourceRoots {
-                    codex: None,
-                    dsh: None,
-                    trae: None,
                     trae_local: Some(self.root.clone()),
+                    ..Default::default()
                 },
                 &self.day(),
                 "Asia/Shanghai",

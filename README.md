@@ -4,13 +4,13 @@
 [![最新版本](https://img.shields.io/github/v/release/Caltsic/dailyChatgptReport?display_name=tag)](https://github.com/Caltsic/dailyChatgptReport/releases)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、DeepSeek Harness、国际版 Trae 本地明文记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
+Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每个部门独立运行。成员采集并上传本机 Codex、Claude Code、AGY CLI、DeepSeek Harness、Z Code、国际版 Trae 本地明文记录和手动导入的 Trae 导出文件，组长生成日报，成员复核并提交补充，组长导出 PDF 或生成部门汇总。
 
 这是一个面向部门内网/VPN 的本地优先开源项目。成员端不配置模型；组长端在本机运行 LangGraph/LangChain Agent，并通过组长配置的 OpenAI 兼容接口生成报告。数据按部门独立保存，首版不接入普通 ChatGPT 网页记录、不做跨部门同步、不读取项目文件或附件。成员端只读取已启用的本机来源；系统提示、内部推理和内部记录不采集，未安装的来源自动跳过。
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.7.3（2026-11-13）**。本次修复组长端“测试已保存模型配置”总报 `AttributeError: 'str' object has no attribute 'get'` 的问题：连接测试传给报告 Agent 的是纯字符串输入，收尾生成采集范围摘要时假定为对象而报错；现已按 0 条事件/报告处理，与网关地址、模型和接口格式无关。其他功能与 0.7.2 相同。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.8.0（2026-11-17）**。本次扩展成员端采集范围，完整覆盖 Codex（ChatGPT 编码工具）、Claude Code CLI、AGY CLI、DeepSeek Harness、Z Code 与 Trae：新增 Claude Code（`~/.claude/projects/**/*.jsonl` 及子代理与 `customTitle`）、AGY CLI（`~/.gemini/antigravity-cli/brain/**/transcript.jsonl`、`transcript_full.jsonl` 回填及实时 WAL `conversation_summaries.db` 元数据）与 Z Code（`~/.zcode/cli/db/db.sqlite`、`tasks-index.sqlite` 及 `v2/sessions` 旧版 JSON 快照去重读取）三个本地采集器，同步更新记录来源配置、配对授权提示、组长端提示词和 CLI 参数。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -23,6 +23,26 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 7. 成员阅读只读正文，填写并提交补充。没有补充时点击“确认无补充”，实际保存文字为 `无补充说明`；补充不可留空。
 8. 组长点击“导出 PDF”，得到规定 A4 版式的 PDF，并归档该版本。个人补充按原文附尾，标明作者、提交时间和正文版本。成员可下载自己的 PDF。
 9. 组长点击“生成部门汇总”，把当日所有当前有效、已提交补充说明的个人日报和补充一起交给部门 Agent。无需先导出个人报告；汇总可预览并导出 PDF，附参与汇总的日报版本和缺失成员名单。
+
+Ubuntu 成员端也提供命令行入口，适合通过 SSH 或定时脚本完成同一套成员操作。安装 `.deb` 后可直接使用 `codex-daily-report-member`；可运行目录中的 `CodexDailyReport.Member` 也支持同样的 `cli` 子命令。常用流程如下：
+
+```bash
+# 绑定（配对邀请是组长端生成的 Base64 文本）
+codex-daily-report-member cli pair --invitation-file invite.txt
+# 查看本机来源和绑定状态
+codex-daily-report-member cli init --json
+# 只采集并列出会话，不上传
+codex-daily-report-member cli collect --day 2026-11-14
+# 采集后上传全部会话；也可以重复 --session，只上传指定会话，或使用 --none 提交空记录
+codex-daily-report-member cli submit --day 2026-11-14 --all --json
+# 查看组长端确认、日报和待发送队列
+codex-daily-report-member cli status --day 2026-11-14 --json
+# 提交补充说明；没有补充时必须明确确认
+codex-daily-report-member cli supplement --day 2026-11-14 --text '补充说明内容'
+codex-daily-report-member cli supplement --day 2026-11-14 --no-supplement
+```
+
+需要隔离数据目录时，在命令中加入 `--data-dir /绝对路径`。`submit` 在同一进程内完成采集、会话筛选和上传；默认使用本次采集的已选会话，断网时仍写入本机队列。所有命令都支持 `--json`，便于 SSH 脚本按 `received`、`queue`、`report` 和 `syncMessage` 字段处理结果。
 
 成员重新上传记录后，旧日报仍可阅读，补充可编辑和保存草稿；需组长基于最新记录生成新版后才能提交补充。若点击提交时恰好发生版本变化，成员端保留草稿和被拒绝提交的原文，提示刷新复核。已被拒绝的版本冲突请求移至本机 `feedback-conflicts` 目录，不会继续重试旧正文，也不会自动附到新正文。
 
@@ -50,7 +70,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 ## 记录与版本
 
-- 按部门时区和事件发生时间读取已启用来源的本机记录，覆盖当天继续的旧会话。Codex 读取 `sessions`、`archived_sessions`；DeepSeek Harness 读取其数据目录下的 `sessions`，也可在“记录来源”中指定自定义位置。不主动读取项目文件、附件或凭据配置；不采集内部推理、系统提示、开发者指令和注入型内部消息。
+- 按部门时区和事件发生时间读取已启用来源的本机记录，覆盖当天继续的旧会话。Codex 读取 `sessions`、`archived_sessions`；Claude Code 读取 `projects/**/*.jsonl` 及子代理记录；AGY CLI 读取 `brain/**/transcript.jsonl`、`transcript_full.jsonl` 及 `conversation_summaries.db`；DeepSeek Harness 读取其数据目录下的 `sessions`；Z Code 读取 `cli/db/db.sqlite`、`v2/tasks-index.sqlite` 及未迁移的 `v2/sessions` 快照。所有来源也可在“记录来源”或 CLI 指定自定义位置；不主动读取项目文件、附件或凭据配置；不采集内部推理（`thinking`/`reasoning`）、系统提示、开发者指令和注入型内部消息。
 - 支持 Codex 子代理的可见消息，保留作者与接收方；仅含加密内容的内部消息正常跳过。0.2.1 修复了这些消息在旧版被误报为不支持的情况；旧提交需由成员重新提交才能更新采集结果。
 - DeepSeek Harness 只读取当前 v4 会话格式；旧格式会话（v0–v3）和未来版本在采集时提示并跳过，可先在 DSH 中继续该会话再采集。子代理会话作为独立会话列出并标注父会话；继承（fork）会话按继承截点跳过已有历史，避免重复计入。不同来源的记录深度不同，缺失的工具结果或验证不作推断。
 - 单条记录超过 200000 字符时截断，正文保留原长度与保留长度标注，采集说明同时注明；本机完整日志不受影响。
@@ -98,6 +118,8 @@ bash scripts/build-linux-member.sh
 
 ## 当前验证范围
 
+0.8.0 扩展多 AI 编码工具本机采集范围（Codex、Claude Code CLI、AGY CLI、DeepSeek Harness、Z Code、Trae 本地与导出）：成员端 36 项、无桌面核心 36 项、组长端 39 项库回归全部通过，三种配置下 `cargo clippy -- -D warnings` 均 0 警告；隔离 HTTPS 五源联合验收 `verify_multi_source`（Codex + Claude Code + AGY CLI + DeepSeek Harness + Z Code，5 会话/12 事件）通过组长端生产校验且快照保留 5 类来源并排除全部思考/系统/元记录；真实本机只读探针 `verify_sources` 在 2026-11-16 数据上实测采集 Claude Code（3 会话/6 事件）与 AGY CLI（10 会话/1,428 事件），DSH/Codex/Z Code 目录可读且无泄露（949ms）；前端构建、`agent/pipeline_smoke_test.py`、`agent/smoke_test.py` 与仓内安全卫生检查通过。边界：Z Code 本机暂无历史对话行，其 SQLite/WAL 与旧快照去重逻辑通过完整构造夹具与单测验证；未调用外部模型。
+
 0.7.3 修复“测试模型连接”失败：`leader.testConnection` 的字符串输入导致流水线收尾取 `input.events` 时抛 AttributeError；已改为对非对象输入按空负载统计，新增 Agent 回归用例（修复前可稳定复现、修复后通过）。`agent/smoke_test.py`、`agent/pipeline_smoke_test.py` 通过；重建组长端 Agent 运行时与 Windows 双端安装包。边界：未用用户网关做真实调用（无凭据），连通性以用户点“测试”为准。
 
 0.7.2 完善 Ubuntu 包元数据与代码检查：deb 控制信息补上 Description/桌面 `Comment`、依赖去重（WebKitGTK 4.1/GTK3/AppIndicator 由打包器自动添加）；`cargo clippy` 在成员端、组长端、无桌面核心三种配置下 0 警告；deb 安装/无头启动/卸载保留数据复验，Windows 双端与 deb 0.7.2 重建并复验启动。成员端 26 项、组长端 29 项、无桌面核心 26 项库回归通过。功能与 0.7.1 相同，未调用模型。
@@ -132,4 +154,4 @@ bash scripts/build-linux-member.sh
 
 业务回归集中于上传恢复、正文与补充版本、独立任务并行及文档导出，另检查打包 Agent 的运行和继续任务。详见 `VALIDATION.md`。目标部门多机内网/VPN 和十五人实际使用仍需现场试用，安装包尚未配置发布者代码签名。
 
-当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex 与 DeepSeek Harness 日志、国际版 Trae 本地明文记录、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae CN 加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。
+当前范围为 Windows x64 双端、Ubuntu 22.04/24.04 x64 成员端、每人一个部门和一台主要工作电脑、本机 Codex、Claude Code、AGY CLI、DeepSeek Harness、Z Code 与国际版 Trae 本地明文记录、手动导入的 Trae 导出文件；不含普通 ChatGPT 网页、Trae CN 加密数据库的自动读取、多设备合并、跨部门看板或绩效评分。

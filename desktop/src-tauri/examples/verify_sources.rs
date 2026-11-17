@@ -97,11 +97,20 @@ fn main() -> anyhow::Result<()> {
     if let Some(path) = arg("--codex") {
         roots.codex = Some(PathBuf::from(path));
     }
+    if let Some(path) = arg("--claude") {
+        roots.claude = Some(PathBuf::from(path));
+    }
+    if let Some(path) = arg("--agy") {
+        roots.agy = Some(PathBuf::from(path));
+    }
     if let Some(path) = arg("--dsh") {
         roots.dsh = Some(PathBuf::from(path));
     }
-    if roots.codex.is_none() && roots.dsh.is_none() {
-        anyhow::bail!("请用 --codex <目录> 和/或 --dsh <目录> 指定要检查的本机记录目录");
+    if let Some(path) = arg("--zcode") {
+        roots.zcode = Some(PathBuf::from(path));
+    }
+    if roots.is_empty() {
+        anyhow::bail!("请用 --codex / --claude / --agy / --dsh / --zcode 等参数指定要检查的本机记录目录");
     }
     let day = match arg("--day") {
         Some(day) => day,
