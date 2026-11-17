@@ -85,7 +85,7 @@ impl MemberClient {
         let zone = identity_part(&pairing,"timeZone");
         let roots = self.source_roots()?;
         let key = context(&pairing,day,&self.codex_root());
-        if roots.codex.is_none() && roots.dsh.is_none() {
+        if roots.is_empty() {
             bail!("尚未启用任何记录来源，请先在“记录来源”中选择要采集的本机目录");
         }
         let memory_path = self.root.join("session-selection").join(format!("{key}.secret"));

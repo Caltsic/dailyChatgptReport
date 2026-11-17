@@ -35,6 +35,15 @@ pub struct SourceRoots {
     pub trae_local: Option<PathBuf>,
 }
 
+impl SourceRoots {
+    pub fn is_empty(&self) -> bool {
+        self.codex.is_none()
+            && self.dsh.is_none()
+            && self.trae.is_none()
+            && self.trae_local.is_none()
+    }
+}
+
 pub struct SelectionCapture {
     pub capture: Value,
     pub sessions: Vec<Value>,

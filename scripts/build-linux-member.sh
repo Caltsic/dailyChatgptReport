@@ -18,6 +18,7 @@ if [[ "${SKIP_TESTS:-0}" != "1" ]]; then
 fi
 
 mkdir -p "$installers" "$publish"
+chmod +x "$desktop/src-tauri/linux/codex-daily-report-member"
 # The base config lists the Windows NSIS target; --bundles overrides it for Linux.
 npx tauri build --bundles deb --config src-tauri/tauri.build.conf.json
 

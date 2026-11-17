@@ -1,6 +1,7 @@
 * text=auto
 *.ps1 text eol=crlf
 *.sh text eol=lf
+desktop/src-tauri/linux/* text eol=lf
 *.cs text eol=crlf
 *.rs text eol=lf
 *.py text eol=lf

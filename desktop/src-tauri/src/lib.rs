@@ -1,6 +1,7 @@
 pub mod common;
 pub mod collector;
 pub mod member;
+pub mod cli;
 #[cfg(feature="leader")]
 pub mod leader;
 #[cfg(feature="leader")]
@@ -155,6 +156,7 @@ pub use desktop::run;
 pub fn data_root()->PathBuf {
     let args:Vec<String>=std::env::args().collect();
     if let Some(i)=args.iter().position(|a|a=="--data-dir") { if let Some(path)=args.get(i+1){return PathBuf::from(path);} }
+    if let Some(path)=args.iter().find_map(|a|a.strip_prefix("--data-dir=")) { return PathBuf::from(path); }
     #[cfg(windows)]
     {
         PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default()).join("CodexDailyReport").join(ROLE)

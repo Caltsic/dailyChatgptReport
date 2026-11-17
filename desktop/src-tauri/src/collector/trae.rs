@@ -889,7 +889,16 @@ mod tests {
         fn day(&self) -> String {
             crate::common::today("Asia/Shanghai").unwrap()
         }
+        fn yesterday(&self) -> String {
+            (chrono::Utc::now().with_timezone(&chrono_tz::Asia::Shanghai).date_naive()
+                - chrono::Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string()
+        }
         fn collect(&self) -> crate::collector::SelectionCapture {
+            self.collect_day(&self.day())
+        }
+        fn collect_day(&self, day: &str) -> crate::collector::SelectionCapture {
             collect_for_selection(
                 &SourceRoots {
                     codex: None,
@@ -897,7 +906,7 @@ mod tests {
                     trae: Some(self.root.clone()),
                     trae_local: None,
                 },
-                &self.day(),
+                day,
                 "Asia/Shanghai",
             )
             .unwrap()
@@ -939,7 +948,7 @@ mod tests {
     #[test]
     fn trae_json_export_reads_messages_and_skips_system() {
         let fixture = Fixture::new("json");
-        let day = fixture.day();
+        let day = fixture.yesterday();
         fixture.write(
             &format!("{day}.json"),
             &format!(
@@ -950,7 +959,7 @@ mod tests {
                 ]}}"#,
             ),
         );
-        let capture = fixture.collect().capture;
+        let capture = fixture.collect_day(&day).capture;
         let events = capture["events"].as_array().unwrap();
         assert_eq!(events.len(), 2, "events: {events:?}");
         assert_eq!(events[0]["kind"], "user");
@@ -962,7 +971,7 @@ mod tests {
     #[test]
     fn trae_jsonl_export_reads_lines() {
         let fixture = Fixture::new("jsonl");
-        let day = fixture.day();
+        let day = fixture.yesterday();
         let lines = [
             json!({"role":"user","content":"第一问","timestamp":format!("{day}T08:00:00+08:00")}),
             json!({"role":"assistant","content":"第一答","timestamp":format!("{day}T08:01:00+08:00")}),
@@ -972,7 +981,7 @@ mod tests {
         .collect::<Vec<_>>()
         .join("\n");
         fixture.write(&format!("{day}.jsonl"), &lines);
-        let capture = fixture.collect().capture;
+        let capture = fixture.collect_day(&day).capture;
         assert_eq!(capture["events"].as_array().unwrap().len(), 2);
         assert_eq!(capture["events"][0]["kind"], "user");
     }

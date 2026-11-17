@@ -10,7 +10,7 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 
 当前可从 [Releases](https://github.com/Caltsic/dailyChatgptReport/releases) 获取 Windows 安装包和 Ubuntu 成员端 `.deb`。源码协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题请看 [SECURITY.md](SECURITY.md)，版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本：**组长端和成员端 0.7.3（2026-11-13）**。本次修复组长端“测试已保存模型配置”总报 `AttributeError: 'str' object has no attribute 'get'` 的问题：连接测试传给报告 Agent 的是纯字符串输入，收尾生成采集范围摘要时假定为对象而报错；现已按 0 条事件/报告处理，与网关地址、模型和接口格式无关。其他功能与 0.7.2 相同。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
+当前版本：**组长端和成员端 0.7.4（2026-11-14）**。本次修复组长端“测试已保存模型配置”总报 `AttributeError: 'str' object has no attribute 'get'` 的问题：连接测试传给报告 Agent 的是纯字符串输入，收尾生成采集范围摘要时假定为对象而报错；现已按 0 条事件/报告处理，与网关地址、模型和接口格式无关。其他功能与 0.7.3 相同。升级前从托盘退出旧端，再运行新安装包或 `apt install` 新 `.deb`。
 
 ## 安装与使用
 
@@ -23,6 +23,26 @@ Windows x64 双端软件（成员端另提供 Ubuntu 22.04+ x64 版本），每�
 7. 成员阅读只读正文，填写并提交补充。没有补充时点击“确认无补充”，实际保存文字为 `无补充说明`；补充不可留空。
 8. 组长点击“导出 PDF”，得到规定 A4 版式的 PDF，并归档该版本。个人补充按原文附尾，标明作者、提交时间和正文版本。成员可下载自己的 PDF。
 9. 组长点击“生成部门汇总”，把当日所有当前有效、已提交补充说明的个人日报和补充一起交给部门 Agent。无需先导出个人报告；汇总可预览并导出 PDF，附参与汇总的日报版本和缺失成员名单。
+
+Ubuntu 成员端也提供命令行入口，适合通过 SSH 或定时脚本完成同一套成员操作。安装 `.deb` 后可直接使用 `codex-daily-report-member`；可运行目录中的 `CodexDailyReport.Member` 也支持同样的 `cli` 子命令。常用流程如下：
+
+```bash
+# 绑定（配对邀请是组长端生成的 Base64 文本）
+codex-daily-report-member cli pair --invitation-file invite.txt
+# 查看本机来源和绑定状态
+codex-daily-report-member cli init --json
+# 只采集并列出会话，不上传
+codex-daily-report-member cli collect --day 2026-11-14
+# 采集后上传全部会话；也可以重复 --session，只上传指定会话，或使用 --none 提交空记录
+codex-daily-report-member cli submit --day 2026-11-14 --all --json
+# 查看组长端确认、日报和待发送队列
+codex-daily-report-member cli status --day 2026-11-14 --json
+# 提交补充说明；没有补充时必须明确确认
+codex-daily-report-member cli supplement --day 2026-11-14 --text '补充说明内容'
+codex-daily-report-member cli supplement --day 2026-11-14 --no-supplement
+```
+
+需要隔离数据目录时，在命令中加入 `--data-dir /绝对路径`。`submit` 在同一进程内完成采集、会话筛选和上传；默认使用本次采集的已选会话，断网时仍写入本机队列。所有命令都支持 `--json`，便于 SSH 脚本按 `received`、`queue`、`report` 和 `syncMessage` 字段处理结果。
 
 成员重新上传记录后，旧日报仍可阅读，补充可编辑和保存草稿；需组长基于最新记录生成新版后才能提交补充。若点击提交时恰好发生版本变化，成员端保留草稿和被拒绝提交的原文，提示刷新复核。已被拒绝的版本冲突请求移至本机 `feedback-conflicts` 目录，不会继续重试旧正文，也不会自动附到新正文。
 

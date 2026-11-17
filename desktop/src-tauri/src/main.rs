@@ -1,6 +1,19 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().skip(1).any(|arg| arg == "cli" || arg == "--cli") {
+        let result = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("创建命令行运行时失败")
+            .block_on(daily_report::cli::run(&args[1..]));
+        if let Err(error) = result {
+            eprintln!("错误：{}", daily_report::common::redact(&format!("{error:#}")));
+            std::process::exit(1);
+        }
+        return;
+    }
     let root = daily_report::data_root();
     #[cfg(windows)]
     {

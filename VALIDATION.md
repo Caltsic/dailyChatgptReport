@@ -1,3 +1,13 @@
+# 0.7.4 Linux 成员端 SSH 命令行
+
+日期：2026-11-14。Linux 成员端新增命令行入口，复用现有 MemberClient，不另建上传协议。
+
+- 命令覆盖绑定、来源配置、采集预览、按会话筛选提交、状态查询和补充确认；所有命令支持 JSON 输出，--data-dir 可隔离多套成员数据。
+- Ubuntu 24.04 远端隔离工作区：成员核心库回归 28 项全部通过，前端构建、Release 编译和 Debian 打包通过。
+- 安装后的 /usr/bin/codex-daily-report-member 实测可执行 init --json、status --json；包内同时包含桌面程序和独立 codex-daily-report-member-cli。
+- 独立 HTTPS 模拟组长端完成 CLI 闭环：绑定、配置 Codex 来源、采集 2 条事件并上传、状态确认、提交“无补充说明”，全部通过；未连接真实组长或模型。
+- 产物：artifacts/linux-installers/CodexDailyReport.Member.deb（6,285,552 字节），SHA-256 清单见同目录；可运行文件在 artifacts/linux-publish/CodexDailyReport.Member。
+
 # 0.7.3 修复“测试模型连接”报 AttributeError
 
 日期：2026-11-13。用户用自建网关（`https://twai.aiourstory.cn/v1`、`deepseek-v4.1-flash-1017`）保存配置后点“测试已保存模型配置”，总是收到 `Agent 执行失败（AttributeError）；'str' object has no attribute 'get'`。
