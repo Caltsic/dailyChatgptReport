@@ -1,5 +1,21 @@
 # 变更记录
 
+## [0.8.0] - 2026-11-17
+
+### 新增
+
+- 成员端采集范围扩展至 7 类来源（5 大 AI 编程工具 + Trae 本地/导出）：
+  - **Claude Code**：读取 `~/.claude/projects/**/*.jsonl` 与 `subagents/agent-*.jsonl`（`$CLAUDE_CONFIG_DIR`），支持 `customTitle` / `aiTitle`、子代理 `parentSession` 关联与 `tool_use` / `tool_result` 解析，过滤 `thinking`、`isMeta`、`task-notification` 与内部状态行。
+  - **AGY CLI**：读取 `~/.gemini/antigravity-cli/brain/**/.system_generated/logs/transcript.jsonl`（`$AGY_HOME`），按需从 `transcript_full.jsonl` 回填 `truncated_fields`，并以 WAL 安全副本只读查询 `conversation_summaries.db` 获取会话标题、`workspace_uris` 项目路径及 `parent_conversation_id` 父子关联；解包 `<USER_REQUEST>`，排除 `thinking` 与 `SYSTEM/*` 记录。
+  - **Z Code**：读取 `~/.zcode/cli/db/db.sqlite`（`$ZCODE_HOME`）与可选 `v2/tasks-index.sqlite`（WAL 快照只读），解析 `session` / `message` / `part` 与工具状态；同时兼容扫描 `v2/sessions/**/*.json` 旧版 ACP 快照并对已迁移会话去重；严格剔除 `reasoning` 与 `thought` 推理块。
+- `cli sources` 与 `verify_sources` 新增 `--claude`、`--agy`、`--zcode` 参数；更新 UI “记录来源”弹窗、配对知情同意文本、安装包描述及 `prompts/personal.v3.txt`、`prompts/extract.v2.txt` 多来源说明。
+
+### 验证
+
+- 成员端 36 项、无桌面核心 36 项、组长端 39 项单元测试全部通过，三配置 `clippy` 0 警告。
+- 隔离 HTTPS 多来源验收 `verify_multi_source` 扩展至 Codex + Claude Code + AGY CLI + DeepSeek Harness + Z Code 五源端到端联调通过（5 会话/12 事件）。
+- 只读探针 `verify_sources` 在本机真实记录（`~/.claude`、`~/.gemini/antigravity-cli`、`~/.dsh`、`~/.codex`、`~/.zcode`）验证通过，内部记录泄漏 0。
+
 ## [0.7.4] - 2026-11-14
 
 - Ubuntu 成员端新增 codex-daily-report-member 命令行入口，支持 SSH 下绑定、来源查看、采集、按会话筛选上传、状态查询和补充确认。

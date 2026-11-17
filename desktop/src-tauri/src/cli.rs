@@ -103,7 +103,7 @@ fn help() {
         r#"Linux 成员端命令行：
   CodexDailyReport.Member cli init [--json]
   CodexDailyReport.Member cli pair --invitation BASE64 | --invitation-file FILE [--json]
-  CodexDailyReport.Member cli sources [--json]
+  CodexDailyReport.Member cli sources [--codex DIR] [--claude DIR] [--agy DIR] [--dsh DIR] [--zcode DIR] [--trae-local DIR] [--trae DIR] [--json]
   CodexDailyReport.Member cli collect [--day YYYY-MM-DD] [--json]
   CodexDailyReport.Member cli submit [--day YYYY-MM-DD] [--session ID ... | --all | --none] [--json]
   CodexDailyReport.Member cli status [--day YYYY-MM-DD] [--json]

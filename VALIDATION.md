@@ -1,3 +1,13 @@
+# 0.8.0 多 AI 工具采集扩展（ChatGPT/Codex、Claude Code、AGY CLI、DeepSeek Harness、Z Code、Trae）
+
+日期：2026-11-17。成员端扩展覆盖 Claude Code CLI、AGY CLI 与 Z Code 采集器，与既有 Codex、DeepSeek Harness（v4）、Trae 本地记录及 Trae 导出共用统一 `SourceRoots`、脱敏/截断管道与会话级上传协议。
+
+- 新增采集器与 CLI 支持：`desktop/src-tauri/src/collector/{claude.rs,agy.rs,zcode.rs}`，`collector.rs`、`member.rs`、`cli.rs`、`verify_sources.rs` 接入 `--claude`、`--agy`、`--zcode`；前端“记录来源”弹窗与配对范围提示、提示词 `personal.v3.txt`/`extract.v2.txt` 与安装包元数据同步更新。
+- 单元测试与静态检查：成员端 36 项、无桌面核心 36 项、组长端 39 项库回归全部通过；三配置及检查工具 `cargo clippy -- -D warnings` 均 0 警告；前端 `npm run build`（Vite/tsc）通过。
+- 五源隔离 HTTPS 端到端验收：`verify_multi_source`（`artifacts/acceptance/multi-source/latest-result.json`）覆盖 Codex + Claude Code + AGY CLI + DeepSeek Harness + Z Code 同日采集、会话筛选、HTTPS 上传及组长端校验，5 会话/12 事件全部入库，排除思考/推理/系统/注入记录，重启配置保持。
+- 本机只读全源探测：`verify_sources` 检查 `2026-11-16` 真实目录，实测采得 Claude Code 3 会话/6 事件、AGY CLI 10 会话/1,428 事件（949ms，0 警告与 0 内部记录泄漏）；`~/.zcode` 当前无历史消息行，SQLite WAL 复制、工具错误及旧快照去重通过单测与集成夹具验证。
+- Agent 冒烟测试：`agent/pipeline_smoke_test.py`、`agent/smoke_test.py` 通过；未调用外部模型。
+
 # 0.7.4 Linux 成员端 SSH 命令行
 
 日期：2026-11-14。Linux 成员端新增命令行入口，复用现有 MemberClient，不另建上传协议。

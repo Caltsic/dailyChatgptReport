@@ -809,7 +809,7 @@ mod tests {
                 "created_at": iso(&day, "09:02:00"),
                 "thinking": "PRIVATE_THINKING_MUST_NOT_APPEAR",
                 "tool_calls": [
-                    {"name": "run_command", "args": {"CommandLine": "cargo test --token sk-1234567890abcdef1234567890"}}
+                    {"name": "run_command", "args": {"CommandLine": "cargo test --token sk-abcdefghijklmnopqrst"}}
                 ],
                 "content": "ASSISTANT_PLAN_VISIBLE"
             }),
@@ -855,7 +855,7 @@ mod tests {
         assert!(!text_dump.contains("LOCAL_META_SKIP"));
         assert!(!text_dump.contains("PRIVATE_THINKING_MUST_NOT_APPEAR"));
         assert!(!text_dump.contains("CHECKPOINT_MUST_NOT_APPEAR"));
-        assert!(!text_dump.contains("sk-1234567890abcdef1234567890"));
+        assert!(!text_dump.contains("sk-abcdefghijklmnopqrst"));
         assert!(text_dump.contains("USER_VISIBLE_REQUEST 构建发布包"));
         assert!(text_dump.contains("FULL_TOOL_RESULT_HYDRATED 编译失败详情"));
         assert!(!text_dump.contains("TRUNCATED..."));
